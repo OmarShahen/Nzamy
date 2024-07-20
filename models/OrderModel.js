@@ -9,7 +9,9 @@ const OrderSchema = new mongoose.Schema({
     isPaid: { type: Boolean, default: false },
     isRefunded: { type: Boolean, default: false },
     paymentMethod: { type: String, default: 'CASH', enum: config.PAYMENT_METHODS },
-    items: []
+    items: [],
+    refunderId: { type: mongoose.Types.ObjectId },
+    refundDate: { type: Date }
 
 }, { timestamps: true })
 

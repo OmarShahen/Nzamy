@@ -357,6 +357,9 @@ const searchItemsByNameAndCategory = async (request, response) => {
                 $match: searchQuery
             },
             {
+                $sort: { createdAt: -1 }
+            },
+            {
                 $limit: 20
             },
             {
@@ -373,8 +376,11 @@ const searchItemsByNameAndCategory = async (request, response) => {
             item.category = item.category[0]
         })
 
+        const totalItems = await ItemModel.countDocuments(searchQuery)
+
         return response.status(200).json({
             accepted: true,
+            totalItems,
             items
         })
 

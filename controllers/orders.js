@@ -69,11 +69,44 @@ const createStockRecords = async (items, cashierId) => {
     return stockRecords
 }
 
-const updateItemsWithNewStock = async (items) => {
+const generateStockRecords = async (items, options) => {
+
+    const { cashierId, effect, type } = options
+
+    const stockRecords = []
 
     for(let i=0;i<items.length;i++) {
         const item = items[i]
-        await ItemModel.findByIdAndUpdate(item.itemId, { $inc: { stock: -item.quantity } }, { new: true })
+
+        const counter = await CounterModel.findOneAndUpdate(
+            { name: 'stockRecord' },
+            { $inc: { value: 1 } },
+            { new: true, upsert: true }
+        )
+
+        const stockRecordData = {
+            stockRecordId: counter.value,
+            itemId: item.itemId,
+            userId: cashierId,
+            type,
+            effect,
+            quantity: effect == 'WIN' ? -item.quantity : item.quantity,
+            totalPrice: item.price * item.quantity
+        }
+
+        stockRecords.push(stockRecordData)
+
+    }
+
+    return stockRecords
+}
+
+const updateItemsWithNewStock = async (items, effect='WIN') => {
+
+    for(let i=0;i<items.length;i++) {
+        const item = items[i]
+        const newStock = effect == 'WIN' ? -item.quantity : item.quantity
+        await ItemModel.findByIdAndUpdate(item.itemId, { $inc: { stock: newStock } }, { new: true })
     }
 }
 
@@ -121,13 +154,25 @@ const getOrders = async (request, response) => {
                 }
             },
             {
+                $lookup: {
+                    from: 'users',
+                    localField: 'refunderId',
+                    foreignField: '_id',
+                    as: 'refunder'
+                }
+            },
+            {
                 $project: {
-                    'cashier.password': 0
+                    'cashier.password': 0,
+                    'refunder.password': 0
                 }
             }
         ])
 
-        orders.forEach(order => order.cashier = order.cashier[0])
+        orders.forEach(order => {
+            order.cashier = order.cashier[0]
+            order.refunder = order.refunder[0]
+        })
 
         const totalOrders = await OrderModel.countDocuments(searchQuery)
 
@@ -166,13 +211,25 @@ const getOrderByNumericId = async (request, response) => {
                 }
             },
             {
+                $lookup: {
+                    from: 'users',
+                    localField: 'refunderId',
+                    foreignField: '_id',
+                    as: 'refunder'
+                }
+            },
+            {
                 $project: {
-                    'cashier.password': 0
+                    'cashier.password': 0,
+                    'refunder.password': 0
                 }
             }
         ])
 
-        orders.forEach(order => order.cashier = order.cashier[0])
+        orders.forEach(order => {
+            order.cashier = order.cashier[0]
+            order.refunder = order.refunder[0]
+        })
 
         return response.status(200).json({
             accepted: true,
@@ -370,7 +427,7 @@ const updateOrderRefunding = async (request, response) => {
     try {
 
         const { orderId } = request.params
-        const { isRefunded } = request.body
+        const { isRefunded, refunderId } = request.body
 
         const dataValidation = orderValidation.updateOrderRefunding(request.body)
         if(!dataValidation.isAccepted) {
@@ -391,13 +448,46 @@ const updateOrderRefunding = async (request, response) => {
             })
         }
 
+        if(order.isRefunded) {
+            return response.status(400).json({
+                accepted: false,
+                message: 'الطلب مرتجع لا يمكن التعديل',
+                field: 'isRefunded'
+            })
+        }
+
+        if(isRefunded) {
+            const refunder = await UserModel.findById(refunderId)
+            if(!refunder) {
+                return response.status(400).json({
+                    accepted: false,
+                    message: 'Refunder ID is not registered',
+                    field: 'refunderId'
+                })
+            }
+        }
+
+        const updateOrderData = { isRefunded }
+
+        if(isRefunded) {
+            updateOrderData.refunderId = refunderId
+            updateOrderData.refundDate = new Date()
+        }
+
         const updatedOrder = await OrderModel
-        .findByIdAndUpdate(orderId, { isRefunded }, { new: true })
+        .findByIdAndUpdate(orderId, updateOrderData, { new: true })
+
+        const stockRecordsOptions = { cashierId: refunderId, effect: 'LOSS', type: 'RETURN' }
+        const stockRecords = await generateStockRecords(order.items, stockRecordsOptions)
+        const newStockRecords = await StockRecordModel.insertMany(stockRecords)
+
+        await updateItemsWithNewStock(order.items, 'LOSS')
 
         return response.status(200).json({
             accepted: true,
             message: 'تم تحديث حالة المرتجع بنجاح!',
-            order: updatedOrder
+            order: updatedOrder,
+            stockRecords: newStockRecords
         })
 
     } catch(error) {

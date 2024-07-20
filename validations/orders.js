@@ -48,9 +48,17 @@ const addOrder = (orderData) => {
 
 const updateOrderRefunding = (orderData) => {
 
-    const { isRefunded } = orderData
+    const { isRefunded, refunderId } = orderData
 
     if(typeof isRefunded != 'boolean') return { isAccepted: false, message: 'isRefunded format is invalid', field: 'isRefunded' }
+
+    if(isRefunded) {
+
+        if(!refunderId) return { isAccepted: false, message: 'Refunder ID is required', field: 'refunderId' }
+
+        if(!utils.isObjectId(refunderId)) return { isAccepted: false, message: 'Refunder ID format is invalid', field: 'refunderId' }
+    
+    }
 
     return { isAccepted: true, message: 'data is valid', data: orderData }
 } 
