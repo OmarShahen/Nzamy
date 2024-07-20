@@ -7,6 +7,18 @@ const utils = require('../utils/utils')
 const mongoose = require('mongoose')
 
 
+const getInventoryTotalValue = (items) => {
+
+    let totalValue = 0
+
+    for(let i=0;i<items.length;i++) {
+        const item = items[i]
+        totalValue += item.stock * item.price
+    }
+
+    return totalValue
+}
+
 const getStockRecords = async (request, response) => {
 
     try {
@@ -225,6 +237,9 @@ const getStockRecordsStats = async (request, response) => {
             }
         ])
 
+        const itemsList = await ItemModel.find()
+        const totalInventoryValue = getInventoryTotalValue(itemsList)
+
         const totalRevenue = totalRevenueList.length > 0 ? totalRevenueList[0].totalPaid : 0
 
         const totalExpenses = totalExpensesList.length > 0 ? totalExpensesList[0].totalPaid : 0
@@ -238,7 +253,8 @@ const getStockRecordsStats = async (request, response) => {
             totalExpensesRecords,
             totalRevenue,
             totalExpenses,
-            netProfit
+            netProfit,
+            totalInventoryValue
         })
 
     } catch(error) {

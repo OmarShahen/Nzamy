@@ -301,13 +301,15 @@ const addItem = async (request, response) => {
             })
         }
 
-        const totalBarcodes = await ItemModel.countDocuments({ barcode })
-        if(totalBarcodes != 0) {
-            return response.status(400).json({
-                accepted: false,
-                message: 'باركود الصنف مسجل بالفعل',
-                field: 'barcode'
-            })
+        if(barcode) {
+            const totalBarcodes = await ItemModel.countDocuments({ barcode })
+            if(totalBarcodes != 0) {
+                return response.status(400).json({
+                    accepted: false,
+                    message: 'باركود الصنف مسجل بالفعل',
+                    field: 'barcode'
+                })
+            }
         }
 
         const counter = await CounterModel.findOneAndUpdate(
@@ -480,7 +482,7 @@ const updateItem = async (request, response) => {
             } 
         }
 
-        if(item.barcode != barcode) {
+        if(barcode && item.barcode != barcode) {
             const totalBarcodes = await ItemModel.countDocuments({ barcode })
             if(totalBarcodes != 0) {
                 return response.status(400).json({

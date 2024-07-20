@@ -33,6 +33,7 @@ app.use('/api', require('./routes/items'))
 app.use('/api', require('./routes/orders'))
 app.use('/api', require('./routes/suppliers'))
 app.use('/api', require('./routes/stock-records'))
+app.use('/api', require('./routes/shifts'))
 
 
 db()
