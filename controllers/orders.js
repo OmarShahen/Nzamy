@@ -7,6 +7,7 @@ const orderValidation = require('../validations/orders')
 const utils = require('../utils/utils')
 const mongoose = require('mongoose')
 const StockRecordModel = require('../models/StockRecordModel')
+const config = require('../config/config')
 
 
 const calculateTotalPriceOfItems = (items) => {
@@ -201,6 +202,60 @@ const getOrderByNumericId = async (request, response) => {
         const orders = await OrderModel.aggregate([
             {
                 $match: { orderId: Number.parseInt(orderId) }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'cashierId',
+                    foreignField: '_id',
+                    as: 'cashier'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'refunderId',
+                    foreignField: '_id',
+                    as: 'refunder'
+                }
+            },
+            {
+                $project: {
+                    'cashier.password': 0,
+                    'refunder.password': 0
+                }
+            }
+        ])
+
+        orders.forEach(order => {
+            order.cashier = order.cashier[0]
+            order.refunder = order.refunder[0]
+        })
+
+        return response.status(200).json({
+            accepted: true,
+            orders
+        })
+
+    } catch(error) {
+        console.error(error)
+        return response.status(500).json({
+            accepted: false,
+            message: 'internal server error',
+            error: error.message
+        })
+    }
+}
+
+const getOrderById = async (request, response) => {
+
+    try {
+
+        const { orderId } = request.params
+
+        const orders = await OrderModel.aggregate([
+            {
+                $match: { _id: mongoose.Types.ObjectId(orderId) }
             },
             {
                 $lookup: {
@@ -679,4 +734,5 @@ module.exports = {
     getOrdersGrowthStats,
     getOrdersStats,
     getOrdersItemsQuantityStats,
+    getOrderById
 }

@@ -17,6 +17,13 @@ router.get(
 )
 
 router.get(
+    '/v1/orders/:orderId',
+    verifyOrderId,
+    (request, response) => ordersController.getOrderById(request, response)
+)
+
+
+router.get(
     '/v1/orders/cashiers/:userId',
     authorization.allPermission,
     verifyUserId,
@@ -60,7 +67,6 @@ router.get(
     authorization.allPermission,
     (request, response) => ordersController.getOrdersItemsQuantityStats(request, response)
 )
-
 
 
 module.exports = router
