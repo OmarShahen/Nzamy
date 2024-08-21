@@ -30,5 +30,13 @@ const addStockRecord = (stockRecordData) => {
     return { isAccepted: true, message: 'data is valid', data: stockRecordData }
 }
 
+const updateStockRecordPrice = (stockRecordData) => {
 
-module.exports = { addStockRecord }
+    const { totalPrice } = stockRecordData
+
+    if(typeof totalPrice != 'number') return { isAccepted: false, message: 'Invalid total price format', field: 'totalPrice' }
+
+    return { isAccepted: true, message: 'data is valid', data: stockRecordData }
+}
+
+module.exports = { addStockRecord, updateStockRecordPrice }

@@ -5,6 +5,7 @@ const ItemModel = require('../models/ItemModel')
 const OrderModel = require('../models/OrderModel')
 const SupplierModel = require('../models/SupplierModel')
 const StockRecordModel = require('../models/StockRecordModel')
+const TableModel = require('../models/TableModel')
 
 
 const verifyUserId = async (request, response, next) => {
@@ -215,6 +216,41 @@ const verifyStockRecordId = async (request, response, next) => {
     }
 }
 
+const verifyTableId = async (request, response, next) => {
+
+    try {
+
+        const { tableId } = request.params
+
+        if(!utils.isObjectId(tableId)) {
+            return response.status(400).json({
+                accepted: false,
+                message: 'Invalid table ID format',
+                field: 'tableId'
+            })
+        }
+
+        const table = await TableModel.findById(tableId)
+        if(!table) {
+            return response.status(404).json({
+                accepted: false,
+                message: 'Table ID does not exist',
+                field: 'tableId'
+            })
+        }
+
+        return next()
+
+    } catch(error) {
+        console.error(error)
+        return response.status(500).json({
+            accepted: false,
+            message: 'internal server error',
+            error: error.message
+        })
+    }
+}
+
 
 module.exports = { 
     verifyUserId,
@@ -222,5 +258,6 @@ module.exports = {
     verifyItemId,
     verifyOrderId,
     verifySupplierId,
-    verifyStockRecordId
+    verifyStockRecordId,
+    verifyTableId
 }

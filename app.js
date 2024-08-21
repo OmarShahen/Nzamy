@@ -34,7 +34,7 @@ app.use('/api', require('./routes/orders'))
 app.use('/api', require('./routes/suppliers'))
 app.use('/api', require('./routes/stock-records'))
 app.use('/api', require('./routes/shifts'))
-
+app.use('/api', require('./routes/tables'))
 
 db()
 .then(data => console.log('Mongo is up and running... ;)'))
@@ -48,6 +48,6 @@ app.get('/', (request, response) => {
 })
 
 
-server.listen(config.PORT, () => console.log(`server started on port ${config.PORT} [RA'AYA APP]`))
+//server.listen(config.PORT, () => console.log(`server started on port ${config.PORT} [RA'AYA APP]`))
 
 exports.app = functions.https.onRequest(app)

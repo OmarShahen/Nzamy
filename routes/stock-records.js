@@ -29,5 +29,12 @@ router.get(
     (request, response) => stockRecordsController.getStockRecordsStats(request, response)
 )
 
+router.patch(
+    '/v1/stock-records/:stockRecordId/total-price',
+    authorization.allPermission,
+    verifyStockRecordId,
+    (request, response) => stockRecordsController.updateStockRecordPrice(request, response)
+)
+
 
 module.exports = router

@@ -267,5 +267,39 @@ const getStockRecordsStats = async (request, response) => {
     }
 }
 
+const updateStockRecordPrice = async (request, response) => {
 
-module.exports = { getStockRecords, addStockRecord, deleteStockRecord, getStockRecordsStats }
+    try {
+
+        const dataValidation = stockRecordValidation.updateStockRecordPrice(request.body)
+        if(!dataValidation.isAccepted) {
+            return response.status(400).json({
+                accepted: dataValidation.isAccepted,
+                message: dataValidation.message,
+                field: dataValidation.field
+            })
+        }
+
+        const { stockRecordId } = request.params
+        const { totalPrice } = request.body
+
+        const updatedStockRecord = await StockRecordModel
+        .findByIdAndUpdate(stockRecordId, { totalPrice }, { new: true })
+
+        return response.status(200).json({
+            accepted: true,
+            message: 'تم تعديل سعر معاملة المخزن بنجاح',
+            stockRecord: updatedStockRecord
+        })
+
+    } catch(error) {
+        console.error(error)
+        return response.status(500).json({
+            accepted: false,
+            message: 'internal server error',
+            error: error.message
+        })
+    }
+}
+
+module.exports = { getStockRecords, addStockRecord, deleteStockRecord, getStockRecordsStats, updateStockRecordPrice }

@@ -1,8 +1,8 @@
 module.exports = {
     APP_NAME: `RA'AYA`,
     PORT: process.env.APP_PORT,
-    //DB_URL: process.env.PROD_DB_URL,
-    DB_URL: process.env.DB_URL,
+    DB_URL: process.env.PROD_DB_URL,
+    //DB_URL: process.env.DB_URL,
     SUPPORT_NUMBER: '+201555415331',
     GENDER: ['MALE', 'FEMALE'],
     ROLES: ['OWNER', 'DOCTOR', 'STAFF'],
@@ -21,5 +21,6 @@ module.exports = {
     WEEK_DAYS: ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'],
     PAYMENT_METHODS: ['CASH', 'CARD'],
     TRANSACTION_TYPE: ['PURCHASE', 'SALE', 'RETURN', 'ADJUSTMENT', 'DAMAGE', 'THEFT'],
+    TABLE_STATUS: ['AVAILABLE', 'OCCUPIED', 'RESERVED', 'IN-PROGRESS', 'COMPLETED'],
     PRINTER_IP: 'tcp://192.168.123.100'
 }
