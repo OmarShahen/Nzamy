@@ -8,7 +8,7 @@ const SpecialitySchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: { type: String },
     type: { type: String, enum: config.SPECIALITIES_TYPES },
-    isShow: { type: Boolean, default: false },
+    isShow: { type: Boolean, default: true },
     imageURL: { type: String }
 
 }, { timestamps: true })
