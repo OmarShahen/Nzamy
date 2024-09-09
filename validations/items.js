@@ -1,9 +1,9 @@
 const utils = require('../utils/utils')
-const config = require('../config/config')
+
 
 const addItem = (itemData) => {
 
-    const { categoryId, name, description, price, barcode } = itemData
+    const { categoryId, name, description, price, barcode, isTrackInventory } = itemData
 
     if(categoryId && !utils.isObjectId(categoryId)) return { isAccepted: false, message: 'Category Id format is invalid', field: 'categoryId' }
 
@@ -17,13 +17,14 @@ const addItem = (itemData) => {
 
     if(barcode && typeof barcode != 'string') return { isAccepted: false, message: 'Barcode format is invalid', field: 'barcode' }
 
+    if(typeof isTrackInventory != 'boolean') return { isAccepted: false, message: 'isTrackInventory format is invalid', field: 'isTrackInventory' }
 
     return { isAccepted: true, message: 'data is valid', data: itemData }
 }
 
 const updateItem = (itemData) => {
 
-    const { categoryId, name, description, price, barcode } = itemData
+    const { categoryId, name, description, price, barcode, isTrackInventory } = itemData
 
     if(categoryId && !utils.isObjectId(categoryId)) return { isAccepted: false, message: 'Category Id format is invalid', field: 'categoryId' }
 
@@ -36,6 +37,8 @@ const updateItem = (itemData) => {
     if(price && typeof price != 'number') return { isAccepted: false, message: 'Price format is invalid', field: 'price' }
 
     if(barcode && typeof barcode != 'string') return { isAccepted: false, message: 'Barcode format is invalid', field: 'barcode' }
+
+    if(typeof isTrackInventory != 'boolean') return { isAccepted: false, message: 'isTrackInventory format is invalid', field: 'isTrackInventory' }
 
 
     return { isAccepted: true, message: 'data is valid', data: itemData }

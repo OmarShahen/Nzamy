@@ -48,6 +48,6 @@ app.get('/', (request, response) => {
 })
 
 
-//server.listen(config.PORT, () => console.log(`server started on port ${config.PORT} [RA'AYA APP]`))
+server.listen(config.PORT, () => console.log(`server started on port ${config.PORT} [${config.APP_NAME} APP]`))
 
-exports.app = functions.https.onRequest(app)
+//exports.app = functions.https.onRequest(app)

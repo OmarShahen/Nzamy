@@ -28,7 +28,7 @@ const isItemsStockAvailable = (orderItems, items) => {
         const orderItem = orderItems[i]
         for(let j=0;j<items.length;j++) {
             const item = items[j]
-            if(orderItem.itemId == item._id) {
+            if(orderItem.itemId == item._id && item.isTrackInventory) {
                 const newStock = item.stock - orderItem.quantity
                 if(newStock < 0) {
                     return { isAccepted: false, message: `لا يوجد كمية كافية من ${item.name}` }
@@ -46,6 +46,10 @@ const createStockRecords = async (items, cashierId) => {
 
     for(let i=0;i<items.length;i++) {
         const item = items[i]
+
+        if(!item.isTrackInventory) {
+            continue
+        }
 
         const counter = await CounterModel.findOneAndUpdate(
             { name: 'stockRecord' },
@@ -79,6 +83,10 @@ const generateStockRecords = async (items, options) => {
     for(let i=0;i<items.length;i++) {
         const item = items[i]
 
+        if(!item.isTrackInventory) {
+            continue
+        }
+
         const counter = await CounterModel.findOneAndUpdate(
             { name: 'stockRecord' },
             { $inc: { value: 1 } },
@@ -106,6 +114,9 @@ const updateItemsWithNewStock = async (items, effect='WIN') => {
 
     for(let i=0;i<items.length;i++) {
         const item = items[i]
+        if(!item.isTrackInventory) {
+            continue
+        }
         const newStock = effect == 'WIN' ? -item.quantity : item.quantity
         await ItemModel.findByIdAndUpdate(item.itemId, { $inc: { stock: newStock } }, { new: true })
     }

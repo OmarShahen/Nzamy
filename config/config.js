@@ -1,8 +1,8 @@
 module.exports = {
-    APP_NAME: `RA'AYA`,
+    APP_NAME: `NZAMY`,
     PORT: process.env.APP_PORT,
-    DB_URL: process.env.PROD_DB_URL,
-    //DB_URL: process.env.DB_URL,
+    //DB_URL: process.env.PROD_DB_URL,
+    DB_URL: process.env.DB_URL,
     SUPPORT_NUMBER: '+201555415331',
     GENDER: ['MALE', 'FEMALE'],
     ROLES: ['OWNER', 'DOCTOR', 'STAFF'],
