@@ -1,42 +1,37 @@
-const mongoose = require('mongoose')
-const config = require('../config/config')
+const mongoose = require("mongoose");
 
-const UserSchema = new mongoose.Schema({
-
+const UserSchema = new mongoose.Schema(
+  {
     userId: { type: Number, required: true, unique: true },
-    firstName: { type: String, required: true },
+    firstName: { type: String },
     email: { type: String, required: true },
-    countryCode: { type: Number },
-    phone: { type: Number },
+    phone: { type: String },
     password: { type: String },
-    lang: { type: String, default: 'ar', enum: config.LANGUAGES },
-    timeZone: { type: String, default: "Africa/Cairo" },
-    profileImageURL: { type: String },
+    imageURL: { type: String },
 
-    oauth: {
-        isGoogleAuth: { type: Boolean, default: false }
-    },
+    isGoogle: { type: Boolean, default: false },
+    isFacebook: { type: Boolean, default: false },
+
+    googleId: { type: Number },
+    facebookId: { type: Number },
 
     roles: [],
-    type: { type: String, required: true, enum: config.TYPES },
 
-    isEmployee: { type: Boolean, default: false },
     isVerified: { type: Boolean, required: true, default: false },
-    isShow: { type: Boolean, default: true },
     isBlocked: { type: Boolean, default: false },
     isDeactivated: { type: Boolean, default: false },
     lastLoginDate: { type: Date },
 
     resetPassword: {
-        verificationCode: { type: Number },
-        expirationDate: { type: Date }
+      verificationCode: { type: Number },
+      expirationDate: { type: Date },
     },
     deleteAccount: {
-        verificationCode: { type: Number },
-        expirationDate: { type: Date }
-    }
+      verificationCode: { type: Number },
+      expirationDate: { type: Date },
+    },
+  },
+  { timestamps: true }
+);
 
-}, { timestamps: true })
-
-
-module.exports = mongoose.model('User', UserSchema)
+module.exports = mongoose.model("User", UserSchema);

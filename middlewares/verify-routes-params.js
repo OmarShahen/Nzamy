@@ -1,263 +1,404 @@
-const utils = require('../utils/utils')
-const UserModel = require('../models/UserModel')
-const SpecialityModel = require('../models/SpecialityModel')
-const ItemModel = require('../models/ItemModel')
-const OrderModel = require('../models/OrderModel')
-const SupplierModel = require('../models/SupplierModel')
-const StockRecordModel = require('../models/StockRecordModel')
-const TableModel = require('../models/TableModel')
-
+const utils = require("../utils/utils");
+const { AppError } = require("../middlewares/errorHandler");
+const UserModel = require("../models/UserModel");
+const ItemModel = require("../models/ItemModel");
+const OrderModel = require("../models/OrderModel");
+const SupplierModel = require("../models/SupplierModel");
+const StockRecordModel = require("../models/StockRecordModel");
+const StoreModel = require("../models/StoreModel");
+const CategoryModel = require("../models/CategoryModel");
+const ChannelModel = require("../models/ChannelModel");
+const ChatModel = require("../models/ChatModel");
+const MessageModel = require("../models/MessageModel");
+const PlanModel = require("../models/PlanModel");
+const SubscriptionModel = require("../models/SubscriptionModel");
+const PaymentModel = require("../models/PaymentModel");
+const TagModel = require("../models/TagModel");
+const CustomerAddressModel = require("../models/CustomerAddressModel");
+const CustomerModel = require("../models/CustomerModel");
+const LoyaltyTransactionModel = require("../models/LoyaltyTransactionModel");
+const LoyaltyRuleModel = require("../models/LoyaltyRuleModel");
+const CartModel = require("../models/CartModel");
 
 const verifyUserId = async (request, response, next) => {
+  try {
+    const { userId } = request.params;
 
-    try {
-
-        const { userId } = request.params
-
-        if(!utils.isObjectId(userId)) {
-            return response.status(400).json({
-                accepted: false,
-                message: 'invalid user Id formate',
-                field: 'userId'
-            })
-        }
-
-        const user = await UserModel.findById(userId)
-        if(!user) {
-            return response.status(404).json({
-                accepted: false,
-                message: 'user Id does not exist',
-                field: 'userId'
-            })
-        }
-
-        return next()
-
-    } catch(error) {
-        console.error(error)
-        return response.status(500).json({
-            message: 'internal server error',
-            error: error.message
-        })
+    if (!utils.isObjectId(userId)) {
+      throw new AppError("Invalid user ID format", 400);
     }
-}
 
-const verifySpecialityId = async (request, response, next) => {
-
-    try {
-
-        const { specialityId } = request.params
-
-        if(!utils.isObjectId(specialityId)) {
-            return response.status(400).json({
-                accepted: false,
-                message: 'invalid speciality Id formate',
-                field: 'specialityId'
-            })
-        }
-
-        const speciality = await SpecialityModel.findById(specialityId)
-        if(!speciality) {
-            return response.status(404).json({
-                accepted: false,
-                message: 'speciality Id does not exist',
-                field: 'specialityId'
-            })
-        }
-
-        return next()
-
-    } catch(error) {
-        console.error(error)
-        return response.status(500).json({
-            message: 'internal server error',
-            error: error.message
-        })
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      throw new AppError("User ID does not exist", 404);
     }
-}
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
 
 const verifyItemId = async (request, response, next) => {
+  try {
+    const { itemId } = request.params;
 
-    try {
-
-        const { itemId } = request.params
-
-        if(!utils.isObjectId(itemId)) {
-            return response.status(400).json({
-                accepted: false,
-                message: 'Invalid item ID format',
-                field: 'itemId'
-            })
-        }
-
-        const item = await ItemModel.findById(itemId)
-        if(!item) {
-            return response.status(404).json({
-                accepted: false,
-                message: 'Item ID does not exist',
-                field: 'itemId'
-            })
-        }
-
-        return next()
-
-    } catch(error) {
-        console.error(error)
-        return response.status(500).json({
-            accepted: false,
-            message: 'internal server error',
-            error: error.message
-        })
+    if (!utils.isObjectId(itemId)) {
+      throw new AppError("Invalid item ID format", 400);
     }
-}
+
+    const item = await ItemModel.findById(itemId);
+    if (!item) {
+      throw new AppError("Item ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
 
 const verifyOrderId = async (request, response, next) => {
+  try {
+    const { orderId } = request.params;
 
-    try {
-
-        const { orderId } = request.params
-
-        if(!utils.isObjectId(orderId)) {
-            return response.status(400).json({
-                accepted: false,
-                message: 'Invalid order ID format',
-                field: 'orderId'
-            })
-        }
-
-        const order = await OrderModel.findById(orderId)
-        if(!order) {
-            return response.status(404).json({
-                accepted: false,
-                message: 'Order ID does not exist',
-                field: 'orderId'
-            })
-        }
-
-        return next()
-
-    } catch(error) {
-        console.error(error)
-        return response.status(500).json({
-            accepted: false,
-            message: 'internal server error',
-            error: error.message
-        })
+    if (!utils.isObjectId(orderId)) {
+      throw new AppError("Invalid order ID format", 400);
     }
-}
+
+    const order = await OrderModel.findById(orderId);
+    if (!order) {
+      throw new AppError("Order ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
 
 const verifySupplierId = async (request, response, next) => {
+  try {
+    const { supplierId } = request.params;
 
-    try {
-
-        const { supplierId } = request.params
-
-        if(!utils.isObjectId(supplierId)) {
-            return response.status(400).json({
-                accepted: false,
-                message: 'Invalid supplier ID format',
-                field: 'supplierId'
-            })
-        }
-
-        const supplier = await SupplierModel.findById(supplierId)
-        if(!supplier) {
-            return response.status(404).json({
-                accepted: false,
-                message: 'Supplier ID does not exist',
-                field: 'supplierId'
-            })
-        }
-
-        return next()
-
-    } catch(error) {
-        console.error(error)
-        return response.status(500).json({
-            accepted: false,
-            message: 'internal server error',
-            error: error.message
-        })
+    if (!utils.isObjectId(supplierId)) {
+      throw new AppError("Invalid supplier ID format", 400);
     }
-}
+
+    const supplier = await SupplierModel.findById(supplierId);
+    if (!supplier) {
+      throw new AppError("Supplier ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
 
 const verifyStockRecordId = async (request, response, next) => {
+  try {
+    const { stockRecordId } = request.params;
 
-    try {
-
-        const { stockRecordId } = request.params
-
-        if(!utils.isObjectId(stockRecordId)) {
-            return response.status(400).json({
-                accepted: false,
-                message: 'Invalid stock record ID format',
-                field: 'stockRecordId'
-            })
-        }
-
-        const stockRecord = await StockRecordModel.findById(stockRecordId)
-        if(!stockRecord) {
-            return response.status(404).json({
-                accepted: false,
-                message: 'Stock record ID does not exist',
-                field: 'stockRecordId'
-            })
-        }
-
-        return next()
-
-    } catch(error) {
-        console.error(error)
-        return response.status(500).json({
-            accepted: false,
-            message: 'internal server error',
-            error: error.message
-        })
+    if (!utils.isObjectId(stockRecordId)) {
+      throw new AppError("Invalid stock record ID format", 400);
     }
-}
 
-const verifyTableId = async (request, response, next) => {
-
-    try {
-
-        const { tableId } = request.params
-
-        if(!utils.isObjectId(tableId)) {
-            return response.status(400).json({
-                accepted: false,
-                message: 'Invalid table ID format',
-                field: 'tableId'
-            })
-        }
-
-        const table = await TableModel.findById(tableId)
-        if(!table) {
-            return response.status(404).json({
-                accepted: false,
-                message: 'Table ID does not exist',
-                field: 'tableId'
-            })
-        }
-
-        return next()
-
-    } catch(error) {
-        console.error(error)
-        return response.status(500).json({
-            accepted: false,
-            message: 'internal server error',
-            error: error.message
-        })
+    const stockRecord = await StockRecordModel.findById(stockRecordId);
+    if (!stockRecord) {
+      throw new AppError("Stock record ID does not exist", 404);
     }
-}
 
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
 
-module.exports = { 
-    verifyUserId,
-    verifySpecialityId,
-    verifyItemId,
-    verifyOrderId,
-    verifySupplierId,
-    verifyStockRecordId,
-    verifyTableId
-}
+const verifyStoreId = async (request, response, next) => {
+  try {
+    const { storeId } = request.params;
+
+    if (!utils.isObjectId(storeId)) {
+      throw new AppError("Invalid store ID format", 400);
+    }
+
+    const store = await StoreModel.findById(storeId);
+    if (!store) {
+      throw new AppError("Store ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyCategoryId = async (request, response, next) => {
+  try {
+    const { categoryId } = request.params;
+
+    if (!utils.isObjectId(categoryId)) {
+      throw new AppError("Invalid category ID format", 400);
+    }
+
+    const category = await CategoryModel.findById(categoryId);
+    if (!category) {
+      throw new AppError("Category ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyChannelId = async (request, response, next) => {
+  try {
+    const { channelId } = request.params;
+
+    if (!utils.isObjectId(channelId)) {
+      throw new AppError("Invalid channel ID format", 400);
+    }
+
+    const channel = await ChannelModel.findById(channelId);
+    if (!channel) {
+      throw new AppError("Channel ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyChatId = async (request, response, next) => {
+  try {
+    const { chatId } = request.params;
+
+    if (!utils.isObjectId(chatId)) {
+      throw new AppError("Invalid chat ID format", 400);
+    }
+
+    const chat = await ChatModel.findById(chatId);
+    if (!chat) {
+      throw new AppError("Chat ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyMessageId = async (request, response, next) => {
+  try {
+    const { messageId } = request.params;
+
+    if (!utils.isObjectId(messageId)) {
+      throw new AppError("Invalid message ID format", 400);
+    }
+
+    const message = await MessageModel.findById(messageId);
+    if (!message) {
+      throw new AppError("Message ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyPlanId = async (request, response, next) => {
+  try {
+    const { planId } = request.params;
+
+    if (!utils.isObjectId(planId)) {
+      throw new AppError("Invalid plan ID format", 400);
+    }
+
+    const plan = await PlanModel.findById(planId);
+    if (!plan) {
+      throw new AppError("Plan ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifySubscriptionId = async (request, response, next) => {
+  try {
+    const { subscriptionId } = request.params;
+
+    if (!utils.isObjectId(subscriptionId)) {
+      throw new AppError("Invalid subscription ID format", 400);
+    }
+
+    const subscription = await SubscriptionModel.findById(subscriptionId);
+    if (!subscription) {
+      throw new AppError("Subscription ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyPaymentId = async (request, response, next) => {
+  try {
+    const { paymentId } = request.params;
+
+    if (!utils.isObjectId(paymentId)) {
+      throw new AppError("Invalid payment ID format", 400);
+    }
+
+    const payment = await PaymentModel.findById(paymentId);
+    if (!payment) {
+      throw new AppError("Payment ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyTagId = async (request, response, next) => {
+  try {
+    const { tagId } = request.params;
+
+    if (!utils.isObjectId(tagId)) {
+      throw new AppError("Invalid tag ID format", 400);
+    }
+
+    const tag = await TagModel.findById(tagId);
+    if (!tag) {
+      throw new AppError("Tag ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyCustomerAddressId = async (request, response, next) => {
+  try {
+    const { customerAddressId } = request.params;
+
+    if (!utils.isObjectId(customerAddressId)) {
+      throw new AppError("Invalid customer address ID format", 400);
+    }
+
+    const customerAddress = await CustomerAddressModel.findById(customerAddressId);
+    if (!customerAddress) {
+      throw new AppError("Customer address ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyCustomerId = async (request, response, next) => {
+  try {
+    const { customerId } = request.params;
+
+    if (!utils.isObjectId(customerId)) {
+      throw new AppError("Invalid customer ID format", 400);
+    }
+
+    const customer = await CustomerModel.findById(customerId);
+    if (!customer) {
+      throw new AppError("Customer ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyLoyaltyTransactionId = async (request, response, next) => {
+  try {
+    const { loyaltyTransactionId } = request.params;
+
+    if (!utils.isObjectId(loyaltyTransactionId)) {
+      throw new AppError("Invalid loyalty transaction ID format", 400);
+    }
+
+    const loyaltyTransaction = await LoyaltyTransactionModel.findById(loyaltyTransactionId);
+    if (!loyaltyTransaction) {
+      throw new AppError("Loyalty transaction ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyLoyaltyRuleId = async (request, response, next) => {
+  try {
+    const { loyaltyRuleId } = request.params;
+
+    if (!utils.isObjectId(loyaltyRuleId)) {
+      throw new AppError("Invalid loyalty rule ID format", 400);
+    }
+
+    const loyaltyRule = await LoyaltyRuleModel.findById(loyaltyRuleId);
+    if (!loyaltyRule) {
+      throw new AppError("Loyalty rule ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyCartId = async (request, response, next) => {
+  try {
+    const { cartId } = request.params;
+
+    if (!utils.isObjectId(cartId)) {
+      throw new AppError("Invalid cart ID format", 400);
+    }
+
+    const cart = await CartModel.findById(cartId);
+    if (!cart) {
+      throw new AppError("Cart ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  verifyUserId,
+  verifyItemId,
+  verifyOrderId,
+  verifySupplierId,
+  verifyStockRecordId,
+  verifyStoreId,
+  verifyCategoryId,
+  verifyChannelId,
+  verifyChatId,
+  verifyMessageId,
+  verifyPlanId,
+  verifySubscriptionId,
+  verifyPaymentId,
+  verifyTagId,
+  verifyCustomerAddressId,
+  verifyCustomerId,
+  verifyLoyaltyTransactionId,
+  verifyLoyaltyRuleId,
+  verifyCartId,
+};

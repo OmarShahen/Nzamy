@@ -1,333 +1,449 @@
-const validator = require('../utils/utils')
-const config = require('../config/config')
-
-const checkSpeciality = (specialities) => {
-    for(let i=0;i<specialities.length;i++) {
-        if(!validator.isObjectId(specialities[i])) {
-            return false
-        }
-    }
-
-    return true
-}
-
-const checkPricing = (pricingList) => {
-    for(let i=0;i<pricingList.length;i++) {
-        const price = pricingList[i]
-
-        if(!price.duration) return false
-
-        if(typeof price.duration != 'number') return false
-
-        if(!price.price) return false
-
-        if(typeof price.price != 'number') return false
-
-    }
-
-    return true
-}
-
-const checkRoles = (roles) => {
-    for(let i=0;i<roles.length;i++) {
-        let isValid = false
-        for(let j=0;j<config.ROLES.length;j++) {
-            if(roles[i] == config.ROLES[j]) {
-                isValid = true
-                break
-            }
-        }
-
-        if(!isValid) {
-            return { isAccepted: false, message: 'roles format is invalid', field: 'roles' }
-        }
-    }
-
-    return { isAccepted: true, message: 'data is valid', data: roles }
-}
-
-const seekerSignup = (userData) => {
-
-    const { firstName, email, countryCode, phone, gender, dateOfBirth, timeZone, password } = userData
-
-    if(!firstName) return { isAccepted: false, message: 'Name is required', field: 'firstName' }
-
-    if(!validator.isNameValid(firstName)) return { isAccepted: false, message: 'Invalid name formate', field: 'firstName' }
-
-    if(!email) return { isAccepted: false, message: 'Email is required', field: 'email' }
-
-    if(!validator.isEmailValid(email)) return { isAccepted: false, message: 'Email formate is invalid', field: 'email' }
-
-    if(!countryCode) return { isAccepted: false, message: 'Country code is required', field: 'countryCode' }
-
-    if(typeof countryCode != 'number') return { isAccepted: false, message: 'Country code format is invalid', field: 'countryCode' }
-
-    if(!phone) return { isAccepted: false, message: 'Phone is required', field: 'phone' }
-
-    if(typeof phone != 'number') return { isAccepted: false, message: 'Phone format is invalid', field: 'phone' }
-
-    if(!password) return { isAccepted: false, message: 'Password is required', field: 'password' }
-
-    if(typeof password != 'string') return { isAccepted: false, message: 'Passowrd format is invalid', field: 'password' }
-
-    const validatedPassword = validator.isPasswordStrong(password)
-
-    if(!validatedPassword.isAccepted) return { isAccepted: false, message: validatedPassword.message, field: 'password' }
-
-    if(!gender) return { isAccepted: false, message: 'Gender is required', field: 'gender' }
-
-    if(!config.GENDER.includes(gender)) return { isAccepted: false, message: 'Invalid gender', field: 'gender' }
-
-    if(!dateOfBirth) return { isAccepted: false, message: 'Date of birth', field: 'dateOfBirth' } 
-
-    if(timeZone && typeof timeZone != 'string') return { isAccepted: false, message: 'time zone format is invalid', field: 'timeZone' }
-
-    if(!validator.isDateTimeValid(dateOfBirth)) return { isAccepted: false, message: 'Date of birth format is invalid', field: 'dateOfBirth' }
-            
-    return { isAccepted: true, message: 'data is valid', data: userData }
-
-}
+const validator = require("../utils/utils");
+const config = require("../config/config");
 
 const seekerGoogleSignup = (userData) => {
+  const {
+    firstName,
+    email,
+    password,
+    countryCode,
+    phone,
+    gender,
+    dateOfBirth,
+    timeZone,
+    profileImageURL,
+  } = userData;
 
-    const { firstName, email, password, countryCode, phone, gender, dateOfBirth, timeZone, profileImageURL } = userData
+  if (!firstName)
+    return {
+      isAccepted: false,
+      message: "Name is required",
+      field: "firstName",
+    };
 
-    if(!firstName) return { isAccepted: false, message: 'Name is required', field: 'firstName' }
+  if (!validator.isNameValid(firstName))
+    return {
+      isAccepted: false,
+      message: "Invalid name formate",
+      field: "firstName",
+    };
 
-    if(!validator.isNameValid(firstName)) return { isAccepted: false, message: 'Invalid name formate', field: 'firstName' }
+  if (!email)
+    return { isAccepted: false, message: "Email is required", field: "email" };
 
-    if(!email) return { isAccepted: false, message: 'Email is required', field: 'email' }
+  if (!validator.isEmailValid(email))
+    return {
+      isAccepted: false,
+      message: "Email formate is invalid",
+      field: "email",
+    };
 
-    if(!validator.isEmailValid(email)) return { isAccepted: false, message: 'Email formate is invalid', field: 'email' }
+  if (!password)
+    return {
+      isAccepted: false,
+      message: "Password is required",
+      field: "password",
+    };
 
-    if(!password) return { isAccepted: false, message: 'Password is required', field: 'password' }
+  if (typeof password != "string")
+    return {
+      isAccepted: false,
+      message: "Passowrd format is invalid",
+      field: "password",
+    };
 
-    if(typeof password != 'string') return { isAccepted: false, message: 'Passowrd format is invalid', field: 'password' }
+  const validatedPassword = validator.isPasswordStrong(password);
 
-    const validatedPassword = validator.isPasswordStrong(password)
+  if (!validatedPassword.isAccepted)
+    return {
+      isAccepted: false,
+      message: validatedPassword.message,
+      field: "password",
+    };
 
-    if(!validatedPassword.isAccepted) return { isAccepted: false, message: validatedPassword.message, field: 'password' }
+  if (!countryCode)
+    return {
+      isAccepted: false,
+      message: "Country code is required",
+      field: "countryCode",
+    };
 
-    if(!countryCode) return { isAccepted: false, message: 'Country code is required', field: 'countryCode' }
+  if (typeof countryCode != "number")
+    return {
+      isAccepted: false,
+      message: "Country code format is invalid",
+      field: "countryCode",
+    };
 
-    if(typeof countryCode != 'number') return { isAccepted: false, message: 'Country code format is invalid', field: 'countryCode' }
+  if (!phone)
+    return { isAccepted: false, message: "Phone is required", field: "phone" };
 
-    if(!phone) return { isAccepted: false, message: 'Phone is required', field: 'phone' }
+  if (typeof phone != "number")
+    return {
+      isAccepted: false,
+      message: "Phone format is invalid",
+      field: "phone",
+    };
 
-    if(typeof phone != 'number') return { isAccepted: false, message: 'Phone format is invalid', field: 'phone' }
+  if (!gender)
+    return {
+      isAccepted: false,
+      message: "Gender is required",
+      field: "gender",
+    };
 
-    if(!gender) return { isAccepted: false, message: 'Gender is required', field: 'gender' }
+  if (!config.GENDER.includes(gender))
+    return { isAccepted: false, message: "Invalid gender", field: "gender" };
 
-    if(!config.GENDER.includes(gender)) return { isAccepted: false, message: 'Invalid gender', field: 'gender' }
+  if (!dateOfBirth)
+    return {
+      isAccepted: false,
+      message: "Date of birth",
+      field: "dateOfBirth",
+    };
 
-    if(!dateOfBirth) return { isAccepted: false, message: 'Date of birth', field: 'dateOfBirth' } 
+  if (timeZone && typeof timeZone != "string")
+    return {
+      isAccepted: false,
+      message: "time zone format is invalid",
+      field: "timeZone",
+    };
 
-    if(timeZone && typeof timeZone != 'string') return { isAccepted: false, message: 'time zone format is invalid', field: 'timeZone' }
+  if (!validator.isDateTimeValid(dateOfBirth))
+    return {
+      isAccepted: false,
+      message: "Date of birth format is invalid",
+      field: "dateOfBirth",
+    };
 
-    if(!validator.isDateTimeValid(dateOfBirth)) return { isAccepted: false, message: 'Date of birth format is invalid', field: 'dateOfBirth' }
-            
-    if(profileImageURL && !validator.isValidURL(profileImageURL)) return { isAccepted: false, message: 'Profile image URL is invalid', field: 'profileImageURL' }
+  if (profileImageURL && !validator.isValidURL(profileImageURL))
+    return {
+      isAccepted: false,
+      message: "Profile image URL is invalid",
+      field: "profileImageURL",
+    };
 
-    return { isAccepted: true, message: 'data is valid', data: userData }
+  return { isAccepted: true, message: "data is valid", data: userData };
+};
 
-}
+const signup = (userData) => {
+  const { email, password } = userData;
 
-const expertSignup = (userData) => {
+  if (!email)
+    return { isAccepted: false, message: "Email is required", field: "email" };
 
-    const { firstName, email, countryCode, phone, password, expertVerificationId } = userData
+  if (!validator.isEmailValid(email))
+    return {
+      isAccepted: false,
+      message: "Email formate is invalid",
+      field: "email",
+    };
 
-    if(!firstName) return { isAccepted: false, message: 'Name is required', field: 'firstName' }
+  if (!password)
+    return {
+      isAccepted: false,
+      message: "Password is required",
+      field: "password",
+    };
 
-    if(!validator.isNameValid(firstName)) return { isAccepted: false, message: 'Invalid name formate', field: 'firstName' }
+  const validatedPassword = validator.isPasswordStrong(password);
 
-    if(!email) return { isAccepted: false, message: 'Email is required', field: 'email' }
+  if (!validatedPassword.isAccepted)
+    return {
+      isAccepted: false,
+      message: validatedPassword.message,
+      field: "password",
+    };
 
-    if(!validator.isEmailValid(email)) return { isAccepted: false, message: 'Email formate is invalid', field: 'email' }
+  return { isAccepted: true, message: "data is valid", data: userData };
+};
 
-    if(!countryCode) return { isAccepted: false, message: 'Country code is required', field: 'countryCode' }
+const login = (userData) => {
+  const { email, password } = userData;
 
-    if(typeof countryCode != 'number') return { isAccepted: false, message: 'Country code format is invalid', field: 'countryCode' }
+  if (!email)
+    return { isAccepted: false, message: "Email is required", field: "email" };
 
-    if(!phone) return { isAccepted: false, message: 'Phone is required', field: 'phone' }
+  if (!validator.isEmailValid(email))
+    return {
+      isAccepted: false,
+      message: "Invalid email formate",
+      field: "email",
+    };
 
-    if(typeof phone != 'number') return { isAccepted: false, message: 'Phone format is invalid', field: 'phone' }
+  if (!password)
+    return {
+      isAccepted: false,
+      message: "Password is required",
+      field: "password",
+    };
 
-    if(!password) return { isAccepted: false, message: 'Password is required', field: 'password' }
-
-    const validatedPassword = validator.isPasswordStrong(password)
-
-    if(!validatedPassword.isAccepted) return { isAccepted: false, message: validatedPassword.message, field: 'password' }
-
-    if(!expertVerificationId) return { isAccepted: false, message: 'Expert verification ID is required', field: 'expertVerificationId' }
-
-    if(!validator.isObjectId(expertVerificationId)) return { isAccepted: false, message: 'Expert verification ID format is invalid', field: 'expertVerificationId' }
-
-    return { isAccepted: true, message: 'data is valid', data: userData }
-
-}
-
-const login = (doctorData) => {
-
-    const { email, password } = doctorData
-
-    if(!email) return { isAccepted: false, message: 'Email is required', field: 'email' }
-
-    if(!validator.isEmailValid(email)) return { isAccepted: false, message: 'Invalid email formate', field: 'email' } 
-    
-    if(!password) return { isAccepted: false, message: 'Password is required', field: 'password' }
-
-    return { isAccepted: true, message: 'data is valid', data: doctorData }
-
-}
+  return { isAccepted: true, message: "data is valid", data: userData };
+};
 
 const forgotPassword = (emailData) => {
+  const { email } = emailData;
 
-    const { email } = emailData
+  if (!email)
+    return { isAccepted: false, message: "Email is required", field: "email" };
 
-    if(!email) return { isAccepted: false, message: 'Email is required', field: 'email' }
+  if (!validator.isEmailValid(email))
+    return {
+      isAccepted: false,
+      message: "Invalid email format",
+      field: "email",
+    };
 
-    if(!validator.isEmailValid(email)) return { isAccepted: false, message: 'Invalid email format', field: 'email' } 
-    
-    return { isAccepted: true, message: 'data is valid', data: emailData }
-
-}
+  return { isAccepted: true, message: "data is valid", data: emailData };
+};
 
 const resetPassword = (resetData) => {
+  const { email, verificationCode, password } = resetData;
 
-    const { email, verificationCode, password } = resetData
+  if (!email)
+    return { isAccepted: false, message: "Email is required", field: "email" };
 
-    if(!email) return { isAccepted: false, message: 'Email is required', field: 'email' }
+  if (!validator.isEmailValid(email))
+    return {
+      isAccepted: false,
+      message: "Invalid email format",
+      field: "email",
+    };
 
-    if(!validator.isEmailValid(email)) return { isAccepted: false, message: 'Invalid email format', field: 'email' } 
-    
-    if(!verificationCode) return { isAccepted: false, message: 'Verification code is required', field: 'verificationCode' }
+  if (!verificationCode)
+    return {
+      isAccepted: false,
+      message: "Verification code is required",
+      field: "verificationCode",
+    };
 
-    if(typeof verificationCode != 'number') return { isAccepted: false, message: 'Invalid verification code format', field: 'verificationCode' } 
-    
-    if(!password) return { isAccepted: false, message: 'Password is required', field: 'password' }
+  if (typeof verificationCode != "number")
+    return {
+      isAccepted: false,
+      message: "Invalid verification code format",
+      field: "verificationCode",
+    };
 
-    if(typeof password != 'string') return { isAccepted: false, message: 'Invalid password format', field: 'password' } 
+  if (!password)
+    return {
+      isAccepted: false,
+      message: "Password is required",
+      field: "password",
+    };
 
-    const validatedPassword = validator.isPasswordStrong(password)
+  if (typeof password != "string")
+    return {
+      isAccepted: false,
+      message: "Invalid password format",
+      field: "password",
+    };
 
-    if(!validatedPassword.isAccepted) return { isAccepted: false, message: validatedPassword.message, field: 'password' }
-    
+  const validatedPassword = validator.isPasswordStrong(password);
 
-    return { isAccepted: true, message: 'data is valid', data: resetData }
+  if (!validatedPassword.isAccepted)
+    return {
+      isAccepted: false,
+      message: validatedPassword.message,
+      field: "password",
+    };
 
-}
+  return { isAccepted: true, message: "data is valid", data: resetData };
+};
 
 const verifyResetPasswordVerificationCode = (resetData) => {
+  const { email, verificationCode } = resetData;
 
-    const { email, verificationCode } = resetData
+  if (!email)
+    return { isAccepted: false, message: "Email is required", field: "email" };
 
-    if(!email) return { isAccepted: false, message: 'Email is required', field: 'email' }
+  if (!validator.isEmailValid(email))
+    return {
+      isAccepted: false,
+      message: "Invalid email format",
+      field: "email",
+    };
 
-    if(!validator.isEmailValid(email)) return { isAccepted: false, message: 'Invalid email format', field: 'email' } 
-    
-    if(!verificationCode) return { isAccepted: false, message: 'Verification code is required', field: 'verificationCode' }
+  if (!verificationCode)
+    return {
+      isAccepted: false,
+      message: "Verification code is required",
+      field: "verificationCode",
+    };
 
-    if(typeof verificationCode != 'number') return { isAccepted: false, message: 'Invalid verification code format', field: 'verificationCode' } 
+  if (typeof verificationCode != "number")
+    return {
+      isAccepted: false,
+      message: "Invalid verification code format",
+      field: "verificationCode",
+    };
 
-
-    return { isAccepted: true, message: 'data is valid', data: resetData }
-
-}
+  return { isAccepted: true, message: "data is valid", data: resetData };
+};
 
 const verifyDeleteAccountVerificationCode = (verificationData) => {
+  const { verificationCode } = verificationData;
 
-    const { verificationCode } = verificationData
+  console.log(verificationData);
 
-    console.log(verificationData)
-    
-    if(!verificationCode) return { isAccepted: false, message: 'Verification code is required', field: 'verificationCode' }
+  if (!verificationCode)
+    return {
+      isAccepted: false,
+      message: "Verification code is required",
+      field: "verificationCode",
+    };
 
-    if(typeof verificationCode != 'number') return { isAccepted: false, message: 'Invalid verification code format', field: 'verificationCode' } 
+  if (typeof verificationCode != "number")
+    return {
+      isAccepted: false,
+      message: "Invalid verification code format",
+      field: "verificationCode",
+    };
 
-
-    return { isAccepted: true, message: 'data is valid', data: verificationData }
-
-}
+  return { isAccepted: true, message: "data is valid", data: verificationData };
+};
 
 const verifyPersonalInfo = (verifyData) => {
+  const { firstName, lastName } = verifyData;
 
-    const { firstName, lastName } = verifyData
+  if (!firstName)
+    return {
+      isAccepted: false,
+      message: "First name is required",
+      field: "firstName",
+    };
 
+  if (!validator.isNameValid(firstName))
+    return {
+      isAccepted: false,
+      message: "Invalid name formate",
+      field: "firstName",
+    };
 
-    if(!firstName) return { isAccepted: false, message: 'First name is required', field: 'firstName' }
+  if (!lastName)
+    return {
+      isAccepted: false,
+      message: "Last name is required",
+      field: "lastName",
+    };
 
-    if(!validator.isNameValid(firstName)) return { isAccepted: false, message: 'Invalid name formate', field: 'firstName' }
+  if (!validator.isNameValid(lastName))
+    return {
+      isAccepted: false,
+      message: "Invalid name formate",
+      field: "lastName",
+    };
 
-    if(!lastName) return { isAccepted: false, message: 'Last name is required', field: 'lastName' }
-
-    if(!validator.isNameValid(lastName)) return { isAccepted: false, message: 'Invalid name formate', field: 'lastName' }
-
-
-    return { isAccepted: true, message: 'data is valid', data: verifyData }
-
-}
+  return { isAccepted: true, message: "data is valid", data: verifyData };
+};
 
 const verifyDemographicInfo = (verifyData) => {
+  const { gender, dateOfBirth } = verifyData;
 
-    const { gender, dateOfBirth } = verifyData
+  if (!gender)
+    return {
+      isAccepted: false,
+      message: "Gender is required",
+      field: "gender",
+    };
 
-    if(!gender) return { isAccepted: false, message: 'Gender is required', field: 'gender' }
+  if (!config.GENDER.includes(gender))
+    return { isAccepted: false, message: "Invalid gender", field: "gender" };
 
-    if(!config.GENDER.includes(gender)) return { isAccepted: false, message: 'Invalid gender', field: 'gender' }
+  if (!dateOfBirth)
+    return {
+      isAccepted: false,
+      message: "Date of birth",
+      field: "dateOfBirth",
+    };
 
-    if(!dateOfBirth) return { isAccepted: false, message: 'Date of birth', field: 'dateOfBirth' } 
+  if (!validator.isDateValid(dateOfBirth))
+    return {
+      isAccepted: false,
+      message: "Date of birth format is invalid",
+      field: "dateOfBirth",
+    };
 
-    if(!validator.isDateValid(dateOfBirth)) return { isAccepted: false, message: 'Date of birth format is invalid', field: 'dateOfBirth' }
-
-
-    return { isAccepted: true, message: 'data is valid', data: verifyData }
-
-}
+  return { isAccepted: true, message: "data is valid", data: verifyData };
+};
 
 const verifySpecialityInfo = (verifyData) => {
+  const { speciality } = verifyData;
 
-    const { speciality } = verifyData
+  if (!speciality)
+    return {
+      isAccepted: false,
+      message: "Speciality is required",
+      field: "speciality",
+    };
 
-    if(!speciality) return { isAccepted: false, message: 'Speciality is required', field: 'speciality' }
+  if (!Array.isArray(speciality))
+    return {
+      isAccepted: false,
+      message: "Speciality must be a list",
+      field: "speciality",
+    };
 
-    if(!Array.isArray(speciality)) return { isAccepted: false, message: 'Speciality must be a list', field: 'speciality' }    
+  if (speciality.length == 0)
+    return {
+      isAccepted: false,
+      message: "Speciality must be atleast one",
+      field: "speciality",
+    };
 
-    if(speciality.length == 0) return { isAccepted: false, message: 'Speciality must be atleast one', field: 'speciality' }
+  if (!checkSpeciality(speciality))
+    return {
+      isAccepted: false,
+      message: "Invalid speciality format",
+      field: "speciality",
+    };
 
-    if(!checkSpeciality(speciality)) return { isAccepted: false, message: 'Invalid speciality format', field: 'speciality'}
-
-    return { isAccepted: true, message: 'data is valid', data: verifyData }
-
-}
+  return { isAccepted: true, message: "data is valid", data: verifyData };
+};
 
 const addUserEmailVerificationCode = (userVerificationData) => {
+  const { userId, email } = userVerificationData;
 
-    const { userId, email } = userVerificationData
+  if (!userId)
+    return {
+      isAccepted: false,
+      message: "User Id is required",
+      field: "userId",
+    };
 
+  if (!validator.isObjectId(userId))
+    return {
+      isAccepted: false,
+      message: "User Id format is invalid",
+      field: "userId",
+    };
 
-    if(!userId) return { isAccepted: false, message: 'User Id is required', field: 'userId' }
+  if (!email)
+    return { isAccepted: false, message: "Email is required", field: "email" };
 
-    if(!validator.isObjectId(userId)) return { isAccepted: false, message: 'User Id format is invalid', field: 'userId' }
+  if (!validator.isEmailValid(email))
+    return {
+      isAccepted: false,
+      message: "Email format is invalid",
+      field: "email",
+    };
 
-    if(!email) return { isAccepted: false, message: 'Email is required', field: 'email' }
+  return {
+    isAccepted: true,
+    message: "data is valid",
+    data: userVerificationData,
+  };
+};
 
-    if(!validator.isEmailValid(email)) return { isAccepted: false, message: 'Email format is invalid', field: 'email' }
-
-    return { isAccepted: true, message: 'data is valid', data: userVerificationData }
-
-}
-
-module.exports = { 
-    expertSignup,
-    seekerSignup,
-    seekerGoogleSignup,
-    login,
-    verifyPersonalInfo, 
-    verifyDemographicInfo,
-    verifySpecialityInfo,
-    addUserEmailVerificationCode,
-    forgotPassword,
-    resetPassword,
-    verifyResetPasswordVerificationCode,
-    verifyDeleteAccountVerificationCode
-} 
+module.exports = {
+  signup,
+  seekerGoogleSignup,
+  login,
+  verifyPersonalInfo,
+  verifyDemographicInfo,
+  verifySpecialityInfo,
+  addUserEmailVerificationCode,
+  forgotPassword,
+  resetPassword,
+  verifyResetPasswordVerificationCode,
+  verifyDeleteAccountVerificationCode,
+};
