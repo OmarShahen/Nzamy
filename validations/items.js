@@ -1,4 +1,8 @@
-const utils = require("../utils/utils");
+const { z } = require("zod");
+const { isObjectId } = require("../utils/validateObjectId");
+
+// Custom validators using existing utils
+const isValidURL = (url) => require("../utils/validateURL").isValidURL(url);
 
 function isValidImageUrls(urls) {
   if (!Array.isArray(urls)) return false;
@@ -25,205 +29,47 @@ function isValidImageUrls(urls) {
   });
 }
 
-const addItem = (itemData) => {
-  const {
-    userId,
-    storeId,
-    categoryId,
-    name,
-    description,
-    price,
-    stock,
-    imageURL,
-    isTrackInventory,
-  } = itemData;
+const addItemSchema = z.object({
+  userId: z.string().refine(isObjectId, "User Id format is invalid"),
+  storeId: z.string().refine(isObjectId, "Store Id format is invalid"),
+  categoryId: z.string().refine(isObjectId, "Category Id format is invalid"),
+  name: z.string().min(1, "Name is required"),
+  description: z.string().min(1, "Description is required"),
+  price: z.number("Price format is invalid").min(0).optional(),
+  stock: z.number("Stock format is invalid").min(0).optional(),
+  imageURL: z.string().refine(isValidURL, "Image URL format is invalid").optional(),
+  isTrackInventory: z.boolean("isTrackInventory format is invalid"),
+}).refine(
+  (data) => !data.isTrackInventory || typeof data.stock === "number",
+  {
+    message: "Stock is required when isTrackInventory is true",
+    path: ["stock"],
+  }
+);
 
-  if (!userId || !utils.isObjectId(userId))
-    return {
-      isAccepted: false,
-      message: "User Id format is invalid",
-      field: "userId",
-    };
+const updateItemSchema = z.object({
+  categoryId: z.string().refine(isObjectId, "Category Id format is invalid").optional(),
+  name: z.string().min(1, "Name is required").optional(),
+  description: z.string().min(1, "Description is required").optional(),
+  imageURL: z.string().refine(isValidURL, "Image URL format is invalid").optional(),
+  price: z.number("Price format is invalid").min(0).optional(),
+  stock: z.number("Stock format is invalid").min(0).optional(),
+  isTrackInventory: z.boolean("isTrackInventory format is invalid").optional(),
+});
 
-  if (!storeId || !utils.isObjectId(storeId))
-    return {
-      isAccepted: false,
-      message: "Store Id format is invalid",
-      field: "storeId",
-    };
+const updateItemImagesVectorsSchema = z.object({
+  images: z.array(z.string())
+    .min(1, "Images list cannot be empty")
+    .refine(isValidImageUrls, "Invalid image URLs"),
+});
 
-  if (!categoryId || !utils.isObjectId(categoryId))
-    return {
-      isAccepted: false,
-      message: "Category Id format is invalid",
-      field: "categoryId",
-    };
-
-  if (!name || typeof name != "string")
-    return {
-      isAccepted: false,
-      message: "Name format is invalid",
-      field: "name",
-    };
-
-  if (!description || typeof description != "string")
-    return {
-      isAccepted: false,
-      message: "Description format is invalid",
-      field: "description",
-    };
-
-  if (price && typeof price != "number")
-    return {
-      isAccepted: false,
-      message: "Price format is invalid",
-      field: "price",
-    };
-
-  if (imageURL && !utils.isValidURL(imageURL))
-    return {
-      isAccepted: false,
-      message: "Image URL format is invalid",
-      field: "imageURL",
-    };
-
-  if (typeof isTrackInventory != "boolean")
-    return {
-      isAccepted: false,
-      message: "isTrackInventory format is invalid",
-      field: "isTrackInventory",
-    };
-
-  if (isTrackInventory && typeof stock != "number")
-    return {
-      isAccepted: false,
-      message: "Stock format is invalid",
-      field: "stock",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: itemData };
-};
-
-const updateItem = (itemData) => {
-  const {
-    categoryId,
-    name,
-    description,
-    imageURL,
-    price,
-    stock,
-    isTrackInventory,
-  } = itemData;
-
-  if (categoryId && !utils.isObjectId(categoryId))
-    return {
-      isAccepted: false,
-      message: "Category Id format is invalid",
-      field: "categoryId",
-    };
-
-  if (name && typeof name != "string")
-    return {
-      isAccepted: false,
-      message: "Name format is invalid",
-      field: "name",
-    };
-
-  if (description && typeof description != "string")
-    return {
-      isAccepted: false,
-      message: "Description format is invalid",
-      field: "description",
-    };
-
-  if (imageURL && !utils.isValidURL(imageURL))
-    return {
-      isAccepted: false,
-      message: "Image URL format is invalid",
-      field: "imageURL",
-    };
-
-  if (price && typeof price != "number")
-    return {
-      isAccepted: false,
-      message: "Price format is invalid",
-      field: "price",
-    };
-
-  if (stock && typeof stock != "number")
-    return {
-      isAccepted: false,
-      message: "Stock format is invalid",
-      field: "stock",
-    };
-
-  if (typeof isTrackInventory != "boolean")
-    return {
-      isAccepted: false,
-      message: "isTrackInventory format is invalid",
-      field: "isTrackInventory",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: itemData };
-};
-
-const updateItemImagesVectors = (itemData) => {
-  const { images } = itemData;
-
-  if (!images)
-    return {
-      isAccepted: false,
-      message: "images is required",
-      field: "images",
-    };
-
-  if (!Array.isArray(images))
-    return {
-      isAccepted: false,
-      message: "images must be a list",
-      field: "images",
-    };
-
-  if (images.length == 0)
-    return {
-      isAccepted: false,
-      message: "images list is empty",
-      field: "images",
-    };
-
-  if (!isValidImageUrls(images))
-    return {
-      isAccepted: false,
-      message: "images URLs is invalid",
-      field: "images",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: itemData };
-};
-
-const searchItemsByImage = (itemData) => {
-  const { imageURL } = itemData;
-
-  if (!imageURL)
-    return {
-      isAccepted: false,
-      message: "imageURL is required",
-      field: "imageURL",
-    };
-
-  if (!utils.isValidURL(imageURL))
-    return {
-      isAccepted: false,
-      message: "image URL is invalid",
-      field: "imageURL",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: itemData };
-};
+const searchItemsByImageSchema = z.object({
+  imageURL: z.string().min(1, "imageURL is required").refine(isValidURL, "Image URL is invalid"),
+});
 
 module.exports = {
-  addItem,
-  updateItem,
-  updateItemImagesVectors,
-  searchItemsByImage,
+  addItemSchema,
+  updateItemSchema,
+  updateItemImagesVectorsSchema,
+  searchItemsByImageSchema,
 };

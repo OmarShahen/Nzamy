@@ -11,16 +11,16 @@ const CartItemSchema = new mongoose.Schema({
 
 const CartSchema = new mongoose.Schema(
   {
-    cartId: { type: Number, required: true },
+    cartId: { type: Number },
     userId: { type: mongoose.Types.ObjectId, required: true },
     storeId: { type: mongoose.Types.ObjectId, required: true },
     customerId: { type: mongoose.Types.ObjectId, required: true },
     items: [CartItemSchema],
     totalPrice: { type: Number, default: 0 },
-    status: { 
-      type: String, 
-      default: "active", 
-      enum: config.CART_STATUS 
+    status: {
+      type: String,
+      default: "active",
+      enum: config.CART_STATUS,
     },
     lastUpdated: { type: Date, default: Date.now },
     abandonedAt: { type: Date },
@@ -30,9 +30,9 @@ const CartSchema = new mongoose.Schema(
 );
 
 // Pre-save middleware for auto-incrementing cartId and calculations
-CartSchema.pre('save', async function(next) {
+CartSchema.pre("save", async function (next) {
   // Generate cartId for new carts
-  if (this.isNew && !this.cartId) {
+  if (this.isNew) {
     try {
       const counter = await CounterModel.findOneAndUpdate(
         { name: `cart-${this.storeId}` },
@@ -47,12 +47,12 @@ CartSchema.pre('save', async function(next) {
 
   // Update lastUpdated
   this.lastUpdated = new Date();
-  
+
   // Calculate total price
   this.totalPrice = this.items.reduce((total, item) => {
-    return total + (item.price * item.quantity);
+    return total + item.price * item.quantity;
   }, 0);
-  
+
   next();
 });
 

@@ -5,6 +5,13 @@ const authorization = require("../middlewares/verify-permission");
 
 router.get("/v1/orders", authorization.verifyToken, ordersController.getOrders);
 
+router.get(
+  "/v1/orders/:orderId",
+  authorization.verifyToken,
+  verifyOrderId,
+  ordersController.getOrderById
+);
+
 router.post("/v1/orders", authorization.verifyToken, ordersController.addOrder);
 
 router.delete(

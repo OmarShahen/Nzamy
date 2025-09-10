@@ -1,12 +1,15 @@
 const OrderModel = require("../models/OrderModel");
 const UserModel = require("../models/UserModel");
 const ItemModel = require("../models/ItemModel");
-const CounterModel = require("../models/CounterModel");
-const orderValidation = require("../validations/orders");
+const CustomerModel = require("../models/CustomerModel");
+const CustomerAddressModel = require("../models/CustomerAddressModel");
+const OfferModel = require("../models/OfferModel");
+const StoreModel = require("../models/StoreModel");
+const { addOrderSchema, updateOrderSchema } = require("../validations/orders");
+const { AppError } = require("../middlewares/errorHandler");
 const utils = require("../utils/utils");
 const mongoose = require("mongoose");
 const config = require("../config/config");
-const StoreModel = require("../models/StoreModel");
 
 const calculateTotalPriceOfItems = (items) => {
   let totalPrice = 0;
@@ -120,9 +123,9 @@ const updateItemsWithNewStock = async (items, effect = "WIN") => {
   }
 };
 
-const getOrders = async (request, response) => {
+const getOrders = async (request, response, next) => {
   try {
-    let { userId, storeId, status, itemId, paymentMethod, limit, page } =
+    let { userId, storeId, customerId, status, paymentMethod, paymentStatus, limit, page } =
       request.query;
 
     let { searchQuery } = utils.statsQueryGenerator("none", 0, request.query);
@@ -140,6 +143,10 @@ const getOrders = async (request, response) => {
       searchQuery.storeId = mongoose.Types.ObjectId(storeId);
     }
 
+    if (customerId) {
+      searchQuery.customerId = mongoose.Types.ObjectId(customerId);
+    }
+
     if (status) {
       searchQuery.status = status;
     }
@@ -148,8 +155,8 @@ const getOrders = async (request, response) => {
       searchQuery.paymentMethod = paymentMethod;
     }
 
-    if (itemId) {
-      searchQuery["items.itemId"] = itemId;
+    if (paymentStatus) {
+      searchQuery.paymentStatus = paymentStatus;
     }
 
     const orders = await OrderModel.aggregate([
@@ -184,6 +191,22 @@ const getOrders = async (request, response) => {
         },
       },
       {
+        $lookup: {
+          from: "customers",
+          localField: "customerId",
+          foreignField: "_id",
+          as: "customer",
+        },
+      },
+      {
+        $lookup: {
+          from: "offers",
+          localField: "appliedOffers",
+          foreignField: "_id",
+          as: "offerDetails",
+        },
+      },
+      {
         $project: {
           "user.password": 0,
         },
@@ -193,6 +216,7 @@ const getOrders = async (request, response) => {
     orders.forEach((order) => {
       order.user = order.user[0];
       order.store = order.store[0];
+      order.customer = order.customer[0];
     });
 
     const total = await OrderModel.countDocuments(searchQuery);
@@ -203,136 +227,106 @@ const getOrders = async (request, response) => {
       orders,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const addOrder = async (request, response) => {
+const addOrder = async (request, response, next) => {
   try {
-    const dataValidation = orderValidation.addOrder(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
+    const validatedData = addOrderSchema.parse(request.body);
+
+    const user = await UserModel.findById(validatedData.userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
     }
 
-    const {
-      userId,
-      storeId,
-      paymentMethod,
-      items,
-      shippingName,
-      shippingPhone,
-      shippingAddress,
-      shippingCity,
-    } = request.body;
+    const store = await StoreModel.findById(validatedData.storeId);
+    if (!store) {
+      throw new AppError("Store not found", 404);
+    }
 
-    let itemsIdsList = items.map((item) => item.itemId);
+    const customer = await CustomerModel.findById(validatedData.customerId);
+    if (!customer) {
+      throw new AppError("Customer not found", 404);
+    }
+
+    // Validate customer address if provided
+    if (validatedData.customerAddressId) {
+      const customerAddress = await CustomerAddressModel.findById(validatedData.customerAddressId);
+      if (!customerAddress) {
+        throw new AppError("Customer address not found", 404);
+      }
+    }
+
+    // Validate applied offers if provided
+    if (validatedData.appliedOffers && validatedData.appliedOffers.length > 0) {
+      const offerCount = await OfferModel.countDocuments({
+        _id: { $in: validatedData.appliedOffers },
+        storeId: validatedData.storeId,
+        status: "active"
+      });
+      if (offerCount !== validatedData.appliedOffers.length) {
+        throw new AppError("One or more offers are not active or do not exist for this store", 400);
+      }
+    }
+
+    // Validate items exist in store
+    let itemsIdsList = validatedData.items.map((item) => item.itemId);
     const itemsIdsSet = new Set(itemsIdsList);
     const uniqueItemsIdsList = [...itemsIdsSet];
 
     if (uniqueItemsIdsList.length != itemsIdsList.length) {
-      return response.status(400).json({
-        accepted: false,
-        message: "There is duplicate items in items",
-        field: "items",
-      });
-    }
-
-    const user = await UserModel.findById(userId);
-    if (!user) {
-      return response.status(400).json({
-        accepted: false,
-        message: "User ID is not registered",
-        field: "userId",
-      });
-    }
-
-    const store = await StoreModel.findById(storeId);
-    if (!store) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Store ID is not registered",
-        field: "storeId",
-      });
+      throw new AppError("Duplicate items found in order", 400);
     }
 
     const itemsList = await ItemModel.find({
       _id: { $in: itemsIdsList },
-      userId,
-      storeId,
+      storeId: validatedData.storeId,
     });
 
     if (itemsList.length != itemsIdsList.length) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Item IDs is not registered",
-        field: "items",
-      });
+      throw new AppError("One or more items not found in store", 404);
     }
 
-    const itemStockValidation = isItemsStockAvailable(items, itemsList);
+    // Check stock availability
+    const itemStockValidation = isItemsStockAvailable(validatedData.items, itemsList);
     if (!itemStockValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: itemStockValidation.isAccepted,
-        message: itemStockValidation.message,
-        field: "items",
-      });
+      throw new AppError(itemStockValidation.message, 400);
     }
 
-    const TOTAL_PRICE = calculateTotalPriceOfItems(items);
-
-    const counter = await CounterModel.findOneAndUpdate(
-      { name: `order-${storeId}` },
-      { $inc: { value: 1 } },
-      { new: true, upsert: true }
-    );
-
-    const orderData = {
-      orderId: counter.value,
-      userId,
-      storeId,
-      paymentMethod,
-      totalPrice: TOTAL_PRICE,
-      items,
-      shipping: {
-        name: shippingName,
-        phone: shippingPhone,
-        address: shippingAddress,
-        city: shippingCity,
-      },
-    };
-    const orderObj = new OrderModel(orderData);
+    // Order will be saved with pre-save hook calculating totals
+    const orderObj = new OrderModel(validatedData);
     const newOrder = await orderObj.save();
 
-    /*const stockRecords = await createStockRecords(items, cashierId);
-    const newStockRecords = await StockRecordModel.insertMany(stockRecords);*/
+    // Update inventory
+    await updateItemsWithNewStock(validatedData.items);
 
-    await updateItemsWithNewStock(items);
-
-    return response.status(200).json({
+    return response.status(201).json({
       accepted: true,
-      message: "تم اضافة الطلب بنجاح",
+      message: "Order created successfully!",
       order: newOrder,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const deleteOrder = async (request, response) => {
+const getOrderById = async (request, response, next) => {
+  try {
+    const { orderId } = request.params;
+
+    const order = await OrderModel.findById(orderId);
+
+    return response.status(200).json({
+      accepted: true,
+      order,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteOrder = async (request, response, next) => {
   try {
     const { orderId } = request.params;
 
@@ -340,89 +334,64 @@ const deleteOrder = async (request, response) => {
 
     return response.status(200).json({
       accepted: true,
-      message: "تم مسح الطلب بنجاح",
+      message: "Order deleted successfully!",
       order: deletedOrder,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const updateOrder = async (request, response) => {
+const updateOrder = async (request, response, next) => {
   try {
-    const dataValidation = orderValidation.updateOrder(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
-
     const { orderId } = request.params;
-    const { status } = request.body;
+    const validatedData = updateOrderSchema.parse(request.body);
 
     const order = await OrderModel.findById(orderId);
-
-    let isUpdateStock = false;
-
-    if (status && status != order.status) {
-      if (order.status != "PAID" && status != "PAID") {
-        return response.status(400).json({
-          accepted: false,
-          message: "الطلب غير مدفوع ليتم الارتجاع",
-          field: "status",
-        });
-      }
-
-      const WIN_LIST = ["PENDING", "PAID"];
-      const LOSS_LIST = ["REFUNDED", "FAILED", "CANCELLED"];
-
-      isUpdateStock =
-        (WIN_LIST.includes(order.status) && WIN_LIST.includes(status)) ||
-        (LOSS_LIST.includes(order.status) && LOSS_LIST.includes(status))
-          ? false
-          : true;
+    if (!order) {
+      throw new AppError("Order not found", 404);
     }
 
-    const updateOrderData = {
-      status,
-      shipping: {
-        name: request.body.shippingName,
-        phone: request.body.shippingPhone,
-        city: request.body.shippingCity,
-        address: request.body.shippingAddress,
-      },
-    };
+    // Handle inventory updates based on status changes
+    let shouldUpdateInventory = false;
+    let inventoryEffect = null;
+
+    if (validatedData.status && validatedData.status !== order.status) {
+      const CONFIRMED_STATUSES = ["confirmed", "processing", "shipped", "delivered"];
+      const CANCELLED_STATUSES = ["cancelled", "returned"];
+
+      const wasConfirmed = CONFIRMED_STATUSES.includes(order.status);
+      const nowConfirmed = CONFIRMED_STATUSES.includes(validatedData.status);
+      const nowCancelled = CANCELLED_STATUSES.includes(validatedData.status);
+
+      if (!wasConfirmed && nowConfirmed) {
+        // Order is being confirmed - reduce inventory
+        shouldUpdateInventory = true;
+        inventoryEffect = "WIN";
+      } else if (wasConfirmed && nowCancelled) {
+        // Order is being cancelled - restore inventory  
+        shouldUpdateInventory = true;
+        inventoryEffect = "LOSS";
+      }
+    }
 
     const updatedOrder = await OrderModel.findByIdAndUpdate(
       orderId,
-      updateOrderData,
-      { new: true }
+      validatedData,
+      { new: true, runValidators: true }
     );
 
-    if (isUpdateStock) {
-      const updateStatus = WIN_LIST.includes(status) ? "WIN" : "LOSS";
-      await updateItemsWithNewStock(order.items, updateStatus);
+    if (shouldUpdateInventory && inventoryEffect) {
+      await updateItemsWithNewStock(order.items, inventoryEffect);
     }
 
     return response.status(200).json({
       accepted: true,
-      message: "تم تحديث الطلب بنجاح!",
+      message: "Order updated successfully!",
       order: updatedOrder,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
@@ -593,9 +562,10 @@ const getOrdersItemsQuantityStats = async (request, response) => {
 
 module.exports = {
   getOrders,
+  getOrderById,
   addOrder,
-  deleteOrder,
   updateOrder,
+  deleteOrder,
   getOrdersGrowthStats,
   getOrdersStats,
   getOrdersItemsQuantityStats,

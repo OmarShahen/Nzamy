@@ -4,7 +4,7 @@ const CounterModel = require("./CounterModel");
 
 const CustomerSchema = new mongoose.Schema(
   {
-    customerId: { type: Number, required: true },
+    customerId: { type: Number },
     userId: { type: mongoose.Types.ObjectId, required: true },
     storeId: { type: mongoose.Types.ObjectId, required: true },
     name: { type: String, required: true },
@@ -34,8 +34,8 @@ const CustomerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-CustomerSchema.pre('save', async function(next) {
-  if (this.isNew && !this.customerId) {
+CustomerSchema.pre("save", async function (next) {
+  if (this.isNew) {
     try {
       const counter = await CounterModel.findOneAndUpdate(
         { name: `customer-${this.storeId}` },

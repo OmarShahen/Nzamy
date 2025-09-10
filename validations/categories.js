@@ -1,43 +1,17 @@
-const utils = require("../utils/utils");
+const { z } = require("zod");
+const { isObjectId } = require("../utils/validateObjectId");
 
-const addCategory = (categoryData) => {
-  const { userId, storeId, name } = categoryData;
+const addCategorySchema = z.object({
+  userId: z.string().refine(isObjectId, "Invalid user ID format"),
+  storeId: z.string().refine(isObjectId, "Invalid store ID format"),
+  name: z.string().min(1, "Name is required"),
+});
 
-  if (!userId || !utils.isObjectId(userId))
-    return {
-      isAccepted: false,
-      message: "Invalid user ID format",
-      field: "userId",
-    };
+const updateCategorySchema = z.object({
+  name: z.string().min(1, "Name is required").optional(),
+});
 
-  if (!storeId || !utils.isObjectId(storeId))
-    return {
-      isAccepted: false,
-      message: "Invalid store ID format",
-      field: "storeId",
-    };
-
-  if (!name || typeof name != "string")
-    return {
-      isAccepted: false,
-      message: "name is required",
-      field: "name",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: categoryData };
+module.exports = {
+  addCategorySchema,
+  updateCategorySchema,
 };
-
-const updateCategory = (categoryData) => {
-  const { name } = categoryData;
-
-  if (name && typeof name != "string")
-    return {
-      isAccepted: false,
-      message: "name is required",
-      field: "name",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: categoryData };
-};
-
-module.exports = { addCategory, updateCategory };

@@ -15,7 +15,7 @@ const { sendVerificationCode } = require("../mails/verification-code");
 const translations = require("../i18n/index");
 const axios = require("axios");
 
-const signup = async (request, response) => {
+const signup = async (request, response, next) => {
   try {
     const dataValidation = authValidation.signup(request.body);
     if (!dataValidation.isAccepted) {
@@ -74,28 +74,15 @@ const signup = async (request, response) => {
       user: newUser,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const login = async (request, response) => {
+const login = async (request, response, next) => {
   try {
-    const dataValidation = authValidation.login(request.body);
+    const data = authValidation.loginSchema.parse(request.body);
 
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
-
-    const { email, password } = request.body;
+    const { email, password } = data;
 
     const user = await UserModel.findOne({ email, isVerified: true });
 
@@ -149,16 +136,11 @@ const login = async (request, response) => {
       token: token,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const verifyEmailVerificationCode = async (request, response) => {
+const verifyEmailVerificationCode = async (request, response, next) => {
   try {
     const { userId, verificationCode } = request.params;
 
@@ -201,16 +183,11 @@ const verifyEmailVerificationCode = async (request, response) => {
       token,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const verifyEmail = async (request, response) => {
+const verifyEmail = async (request, response, next) => {
   try {
     const { email } = request.params;
 
@@ -236,16 +213,11 @@ const verifyEmail = async (request, response) => {
       email,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const googleLogin = async (request, response) => {
+const googleLogin = async (request, response, next) => {
   try {
     const { accessToken } = request.body;
 
@@ -287,16 +259,11 @@ const googleLogin = async (request, response) => {
       token,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const googleSignup = async (request, response) => {
+const googleSignup = async (request, response, next) => {
   try {
     const { accessToken } = request.body;
 
@@ -347,16 +314,11 @@ const googleSignup = async (request, response) => {
       token,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const setUserVerified = async (request, response) => {
+const setUserVerified = async (request, response, next) => {
   try {
     const { userId } = request.params;
 
@@ -372,16 +334,11 @@ const setUserVerified = async (request, response) => {
       user: updatedUser,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const addUserEmailVerificationCode = async (request, response) => {
+const addUserEmailVerificationCode = async (request, response, next) => {
   try {
     const { userId } = request.params;
 
@@ -424,16 +381,11 @@ const addUserEmailVerificationCode = async (request, response) => {
       message: "sended verification code successfully!",
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const forgotPassword = async (request, response) => {
+const forgotPassword = async (request, response, next) => {
   try {
     const dataValidation = authValidation.forgotPassword(request.body);
     if (!dataValidation.isAccepted) {
@@ -495,16 +447,15 @@ const forgotPassword = async (request, response) => {
       message: "Verification code is sent successfully!",
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const sendUserDeleteAccountVerificationCode = async (request, response) => {
+const sendUserDeleteAccountVerificationCode = async (
+  request,
+  response,
+  next
+) => {
   try {
     const { userId } = request.params;
 
@@ -568,16 +519,11 @@ const sendUserDeleteAccountVerificationCode = async (request, response) => {
       message: "Verification code is sent successfully!",
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const verifyDeleteAccountVerificationCode = async (request, response) => {
+const verifyDeleteAccountVerificationCode = async (request, response, next) => {
   try {
     const { userId, verificationCode } = request.params;
 
@@ -615,16 +561,11 @@ const verifyDeleteAccountVerificationCode = async (request, response) => {
       user: deletedUser,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const verifyResetPasswordVerificationCode = async (request, response) => {
+const verifyResetPasswordVerificationCode = async (request, response, next) => {
   try {
     const dataValidation = authValidation.verifyResetPasswordVerificationCode(
       request.body
@@ -662,16 +603,11 @@ const verifyResetPasswordVerificationCode = async (request, response) => {
       message: "verification code is verified!",
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const resetPassword = async (request, response) => {
+const resetPassword = async (request, response, next) => {
   try {
     const dataValidation = authValidation.resetPassword(request.body);
     if (!dataValidation.isAccepted) {
@@ -738,12 +674,7 @@ const resetPassword = async (request, response) => {
       user: updatedUser,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 

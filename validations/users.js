@@ -1,321 +1,78 @@
+const { z } = require("zod");
+const { isObjectId } = require("../utils/validateObjectId");
 const config = require("../config/config");
-const utils = require("../utils/utils");
 
-const checkSpeciality = (specialities) => {
-  for (let i = 0; i < specialities.length; i++) {
-    if (!utils.isObjectId(specialities[i])) {
-      return false;
-    }
-  }
+// Custom validators using existing utils
+const isNameValid = (name) => require("../utils/validateUsername").isNameValid(name);
+const isEmailValid = (email) => require("../utils/validateEmail").isEmailValid(email);
+const isDateValid = (date) => require("../utils/validateDate").isDateValid(date);
+const isValidURL = (url) => require("../utils/validateURL").isValidURL(url);
 
-  return true;
-};
+const updateUserMainDataSchema = z.object({
+  firstName: z.string().refine(isNameValid, "Invalid name format").optional(),
+  phone: z.number("Invalid phone format").optional(),
+  gender: z.enum(config.GENDER, "Invalid gender").optional(),
+  dateOfBirth: z.string().refine(isDateValid, "Date of birth format is invalid").optional(),
+});
 
-const updateUserMainData = (userData) => {
-  const { firstName, phone, gender, dateOfBirth } = userData;
+const updateUserProfileImageSchema = z.object({
+  profileImageURL: z.string().min(1, "Image URL is required").refine(isValidURL, "Image URL format is invalid"),
+});
 
-  if (firstName && !utils.isNameValid(firstName))
-    return {
-      isAccepted: false,
-      message: "Invalid name formate",
-      field: "firstName",
-    };
+const updateUserVisibilitySchema = z.object({
+  isShow: z.boolean("Invalid isShow format"),
+});
 
-  if (phone && typeof phone != "number")
-    return {
-      isAccepted: false,
-      message: "Invalid phone format",
-      field: "phone",
-    };
+const updateUserBlockedSchema = z.object({
+  isBlocked: z.boolean("Invalid isBlocked format"),
+});
 
-  if (gender && !config.GENDER.includes(gender))
-    return { isAccepted: false, message: "Invalid gender", field: "gender" };
+const updateUserActivationSchema = z.object({
+  isDeactivated: z.boolean("Invalid isDeactivated format"),
+});
 
-  if (dateOfBirth && !utils.isDateValid(dateOfBirth))
-    return {
-      isAccepted: false,
-      message: "Date of birth format is invalid",
-      field: "dateOfBirth",
-    };
+const updateUserSpecialitySchema = z.object({
+  speciality: z.array(z.string().refine(isObjectId, "Invalid speciality format"))
+    .min(1, "Speciality must be at least one"),
+});
 
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
+const updateUserEmailSchema = z.object({
+  email: z.string().min(1, "Email is required").refine(isEmailValid, "Invalid email format"),
+});
 
-const updateUserProfileImage = (userData) => {
-  const { profileImageURL } = userData;
+const updateUserLanguageSchema = z.object({
+  lang: z.enum(config.LANGUAGES, "Invalid language format"),
+});
 
-  if (!profileImageURL)
-    return {
-      isAccepted: false,
-      message: "Image URL is required",
-      field: "profileImageURL",
-    };
+const updateUserPasswordSchema = z.object({
+  password: z.string().min(1, "Password is required"),
+});
 
-  if (!utils.isValidURL(profileImageURL))
-    return {
-      isAccepted: false,
-      message: "Image URL format is invalid",
-      field: "profileImageURL",
-    };
+const verifyAndUpdateUserPasswordSchema = z.object({
+  newPassword: z.string().min(1, "New password is required"),
+  currentPassword: z.string().min(1, "Current password is required"),
+});
 
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
-
-const updateUserVisibility = (userData) => {
-  const { isShow } = userData;
-
-  if (typeof isShow != "boolean")
-    return {
-      isAccepted: false,
-      message: "Invalid isShow format",
-      field: "isShow",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
-
-const updateUserBlocked = (userData) => {
-  const { isBlocked } = userData;
-
-  if (typeof isBlocked != "boolean")
-    return {
-      isAccepted: false,
-      message: "Invalid isBlocked format",
-      field: "isBlocked",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
-
-const updateUserActivation = (userData) => {
-  const { isDeactivated } = userData;
-
-  if (typeof isDeactivated != "boolean")
-    return {
-      isAccepted: false,
-      message: "Invalid isDeactivated format",
-      field: "isDeactivated",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
-
-const updateUserSpeciality = (userData) => {
-  const { speciality } = userData;
-
-  if (!speciality)
-    return {
-      isAccepted: false,
-      message: "Speciality is required",
-      field: "speciality",
-    };
-
-  if (!Array.isArray(speciality))
-    return {
-      isAccepted: false,
-      message: "Speciality must be a list",
-      field: "speciality",
-    };
-
-  if (speciality.length == 0)
-    return {
-      isAccepted: false,
-      message: "Speciality must be atleast one",
-      field: "speciality",
-    };
-
-  if (!checkSpeciality(speciality))
-    return {
-      isAccepted: false,
-      message: "Invalid speciality format",
-      field: "speciality",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
-
-const updateUserEmail = (userData) => {
-  const { email } = userData;
-
-  if (!email)
-    return { isAccepted: false, message: "email is required", field: "email" };
-
-  if (!utils.isEmailValid(email))
-    return {
-      isAccepted: false,
-      message: "invalid email formate",
-      field: "email",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
-
-const updateUserLanguage = (userData) => {
-  const { lang } = userData;
-
-  if (!lang)
-    return {
-      isAccepted: false,
-      message: "language is required",
-      field: "lang",
-    };
-
-  if (!config.LANGUAGES.includes(lang))
-    return { isAccepted: false, message: "invalid lang format", field: "lang" };
-
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
-
-const updateUserPassword = (userData) => {
-  const { password } = userData;
-
-  if (!password)
-    return {
-      isAccepted: false,
-      message: "password is required",
-      field: "password",
-    };
-
-  if (typeof password != "string")
-    return {
-      isAccepted: false,
-      message: "invalid password formate",
-      field: "password",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
-
-const verifyAndUpdateUserPassword = (userData) => {
-  const { newPassword, currentPassword } = userData;
-
-  if (!newPassword)
-    return {
-      isAccepted: false,
-      message: "new password is required",
-      field: "newPassword",
-    };
-
-  if (typeof newPassword != "string")
-    return {
-      isAccepted: false,
-      message: "invalid new password format",
-      field: "newPassword",
-    };
-
-  if (!currentPassword)
-    return {
-      isAccepted: false,
-      message: "current password is required",
-      field: "currentPassword",
-    };
-
-  if (typeof currentPassword != "string")
-    return {
-      isAccepted: false,
-      message: "invalid current password format",
-      field: "currentPassword",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
-
-const addEmployeeUser = (userData) => {
-  const { firstName, lastName, email, password, countryCode, phone, gender } =
-    userData;
-
-  if (!firstName)
-    return {
-      isAccepted: false,
-      message: "First name is required",
-      field: "firstName",
-    };
-
-  if (!utils.isNameValid(firstName))
-    return {
-      isAccepted: false,
-      message: "Invalid name formate",
-      field: "firstName",
-    };
-
-  if (!lastName)
-    return {
-      isAccepted: false,
-      message: "Last name is required",
-      field: "lastName",
-    };
-
-  if (!utils.isNameValid(lastName))
-    return {
-      isAccepted: false,
-      message: "Invalid name formate",
-      field: "lastName",
-    };
-
-  if (!email)
-    return { isAccepted: false, message: "Email is required", field: "email" };
-
-  if (!utils.isEmailValid(email))
-    return {
-      isAccepted: false,
-      message: "Email formate is invalid",
-      field: "email",
-    };
-
-  if (!countryCode)
-    return {
-      isAccepted: false,
-      message: "Country code is required",
-      field: "countryCode",
-    };
-
-  if (typeof countryCode != "number")
-    return {
-      isAccepted: false,
-      message: "Country code format is invalid",
-      field: "countryCode",
-    };
-
-  if (!phone)
-    return { isAccepted: false, message: "Phone is required", field: "phone" };
-
-  if (typeof phone != "number")
-    return {
-      isAccepted: false,
-      message: "Phone format is invalid",
-      field: "phone",
-    };
-
-  if (!password)
-    return {
-      isAccepted: false,
-      message: "Password is required",
-      field: "password",
-    };
-
-  if (!gender)
-    return {
-      isAccepted: false,
-      message: "Gender is required",
-      field: "gender",
-    };
-
-  if (!config.GENDER.includes(gender))
-    return { isAccepted: false, message: "Invalid gender", field: "gender" };
-
-  return { isAccepted: true, message: "data is valid", data: userData };
-};
+const addEmployeeUserSchema = z.object({
+  firstName: z.string().min(1, "First name is required").refine(isNameValid, "Invalid name format"),
+  lastName: z.string().min(1, "Last name is required").refine(isNameValid, "Invalid name format"),
+  email: z.string().min(1, "Email is required").refine(isEmailValid, "Email format is invalid"),
+  password: z.string().min(1, "Password is required"),
+  countryCode: z.number("Country code format is invalid"),
+  phone: z.number("Phone format is invalid"),
+  gender: z.enum(config.GENDER, "Invalid gender"),
+});
 
 module.exports = {
-  updateUserMainData,
-  updateUserProfileImage,
-  updateUserEmail,
-  updateUserPassword,
-  updateUserLanguage,
-  verifyAndUpdateUserPassword,
-  updateUserSpeciality,
-  addEmployeeUser,
-  updateUserActivation,
-  updateUserVisibility,
-  updateUserBlocked,
+  updateUserMainDataSchema,
+  updateUserProfileImageSchema,
+  updateUserEmailSchema,
+  updateUserPasswordSchema,
+  updateUserLanguageSchema,
+  verifyAndUpdateUserPasswordSchema,
+  updateUserSpecialitySchema,
+  addEmployeeUserSchema,
+  updateUserActivationSchema,
+  updateUserVisibilitySchema,
+  updateUserBlockedSchema,
 };

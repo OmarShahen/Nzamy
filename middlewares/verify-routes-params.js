@@ -19,6 +19,7 @@ const CustomerModel = require("../models/CustomerModel");
 const LoyaltyTransactionModel = require("../models/LoyaltyTransactionModel");
 const LoyaltyRuleModel = require("../models/LoyaltyRuleModel");
 const CartModel = require("../models/CartModel");
+const OfferModel = require("../models/OfferModel");
 
 const verifyUserId = async (request, response, next) => {
   try {
@@ -381,6 +382,25 @@ const verifyCartId = async (request, response, next) => {
   }
 };
 
+const verifyOfferId = async (request, response, next) => {
+  try {
+    const { offerId } = request.params;
+
+    if (!utils.isObjectId(offerId)) {
+      throw new AppError("Invalid offer ID format", 400);
+    }
+
+    const offer = await OfferModel.findById(offerId);
+    if (!offer) {
+      throw new AppError("Offer ID does not exist", 404);
+    }
+
+    return next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   verifyUserId,
   verifyItemId,
@@ -401,4 +421,5 @@ module.exports = {
   verifyLoyaltyTransactionId,
   verifyLoyaltyRuleId,
   verifyCartId,
+  verifyOfferId,
 };

@@ -1,45 +1,12 @@
-const utils = require("../utils/utils");
+const { z } = require("zod");
+const { isObjectId } = require("../utils/validateObjectId");
 
-const askAssistant = (askData) => {
-  const { message, threadId, storeId } = askData;
+const askAssistantSchema = z.object({
+  message: z.string().min(1, "Message is required"),
+  threadId: z.string().optional(),
+  storeId: z.string().refine(isObjectId, "Store Id format is invalid"),
+});
 
-  if (!message)
-    return {
-      isAccepted: false,
-      message: "message is required",
-      field: "message",
-    };
-
-  if (typeof message != "string")
-    return {
-      isAccepted: false,
-      message: "message format is invalid",
-      field: "message",
-    };
-
-  if (threadId && typeof threadId != "string") {
-    return {
-      isAccepted: false,
-      message: "threadId format is invalid",
-      field: "threadId",
-    };
-  }
-
-  if (!storeId)
-    return {
-      isAccepted: false,
-      message: "store Id is required",
-      field: "storeId",
-    };
-
-  if (!utils.isObjectId(storeId))
-    return {
-      isAccepted: false,
-      message: "store Id format is invalid",
-      field: "storeId",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: askData };
+module.exports = {
+  askAssistantSchema,
 };
-
-module.exports = { askAssistant };

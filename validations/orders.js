@@ -1,236 +1,82 @@
-const utils = require("../utils/utils");
+const { z } = require("zod");
+const { isObjectId } = require("../utils/validateObjectId");
 const config = require("../config/config");
 
-const addOrder = (orderData) => {
-  const {
-    userId,
-    storeId,
-    paymentMethod,
-    items,
-    shippingName,
-    shippingPhone,
-    shippingAddress,
-    shippingCity,
-  } = orderData;
+const orderItemSchema = z.object({
+  itemId: z.string().refine(isObjectId, "Item Id format is invalid"),
+  name: z.string().min(1, "Item name is required"),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+  price: z.number().min(0, "Price must be non-negative"),
+});
 
-  if (!userId)
-    return {
-      isAccepted: false,
-      message: "User ID is required",
-      field: "userId",
-    };
+const addOrderSchema = z.object({
+  userId: z.string().refine(isObjectId, "User Id format is invalid"),
+  storeId: z.string().refine(isObjectId, "Store Id format is invalid"),
+  customerId: z.string().refine(isObjectId, "Customer Id format is invalid"),
+  
+  items: z.array(orderItemSchema).min(1, "Items array cannot be empty"),
+  
+  // Pricing (subtotal and totalPrice are calculated automatically)
+  taxAmount: z.number().min(0).optional(),
+  shippingCost: z.number().min(0).optional(),
+  discountAmount: z.number().min(0).optional(),
+  
+  // Applied offers
+  appliedOffers: z.array(z.string().refine(isObjectId, "Offer Id format is invalid")).optional(),
+  
+  // Payment info
+  paymentMethod: z.enum(config.PAYMENT_METHODS, "Invalid payment method"),
+  
+  // Shipping address - can reference existing address or provide new one
+  customerAddressId: z.string().refine(isObjectId, "Customer address Id format is invalid").optional(),
+  shipping: z.object({
+    name: z.string().min(1, "Shipping name is required"),
+    phone: z.string().min(1, "Shipping phone is required"),
+    addressLine: z.string().min(1, "Address line is required"),
+    city: z.string().min(1, "City is required"),
+    postalCode: z.string().optional(),
+    country: z.string().min(1, "Country is required"),
+  }),
+  
+  // Additional info
+  notes: z.string().optional(),
+  specialInstructions: z.string().optional(),
+  
+  // Tracking info (usually added after order creation)
+  trackingNumber: z.string().optional(),
+  estimatedDelivery: z.string().datetime().optional().or(z.date().optional()),
+});
 
-  if (!utils.isObjectId(userId))
-    return {
-      isAccepted: false,
-      message: "User ID format is invalid",
-      field: "userId",
-    };
+const updateOrderSchema = z.object({
+  status: z.enum(config.ORDER_STATUS, "Invalid order status").optional(),
+  paymentStatus: z.enum(config.PAYMENT_STATUS, "Invalid payment status").optional(),
+  
+  // Pricing updates
+  taxAmount: z.number().min(0).optional(),
+  shippingCost: z.number().min(0).optional(),
+  discountAmount: z.number().min(0).optional(),
+  
+  // Shipping updates
+  shipping: z.object({
+    name: z.string().min(1, "Shipping name is required").optional(),
+    phone: z.string().min(1, "Shipping phone is required").optional(),
+    addressLine: z.string().min(1, "Address line is required").optional(),
+    city: z.string().min(1, "City is required").optional(),
+    postalCode: z.string().optional(),
+    country: z.string().min(1, "Country is required").optional(),
+  }).optional(),
+  
+  // Tracking updates
+  trackingNumber: z.string().optional(),
+  estimatedDelivery: z.string().datetime().optional().or(z.date().optional()),
+  refundDate: z.string().datetime().optional().or(z.date().optional()),
+  
+  // Additional info updates
+  notes: z.string().optional(),
+  specialInstructions: z.string().optional(),
+});
 
-  if (!storeId)
-    return {
-      isAccepted: false,
-      message: "Store ID is required",
-      field: "storeId",
-    };
-
-  if (!utils.isObjectId(storeId))
-    return {
-      isAccepted: false,
-      message: "Store ID format is invalid",
-      field: "storeId",
-    };
-
-  if (!paymentMethod)
-    return {
-      isAccepted: false,
-      message: "Payment method is required",
-      field: "paymentMethod",
-    };
-
-  if (!config.PAYMENT_METHODS.includes(paymentMethod))
-    return {
-      isAccepted: false,
-      message: "Payment method value is not registered",
-      field: "paymentMethod",
-    };
-
-  if (!shippingName)
-    return {
-      isAccepted: false,
-      message: "Shipping name is required",
-      field: "shippingName",
-    };
-
-  if (typeof shippingName != "string")
-    return {
-      isAccepted: false,
-      message: "Shipping name format is invalid",
-      field: "shippingName",
-    };
-
-  if (!shippingPhone)
-    return {
-      isAccepted: false,
-      message: "Shipping phone is required",
-      field: "shippingPhone",
-    };
-
-  if (typeof shippingPhone != "string")
-    return {
-      isAccepted: false,
-      message: "Shipping phone format is invalid",
-      field: "shippingPhone",
-    };
-
-  if (!shippingAddress)
-    return {
-      isAccepted: false,
-      message: "Shipping address is required",
-      field: "shippingAddress",
-    };
-
-  if (typeof shippingAddress != "string")
-    return {
-      isAccepted: false,
-      message: "Shipping address format is invalid",
-      field: "shippingAddress",
-    };
-
-  if (!shippingCity)
-    return {
-      isAccepted: false,
-      message: "Shipping city is required",
-      field: "shippingCity",
-    };
-
-  if (typeof shippingCity != "string")
-    return {
-      isAccepted: false,
-      message: "Shipping city format is invalid",
-      field: "shippingCity",
-    };
-
-  if (!items)
-    return { isAccepted: false, message: "Items is required", field: "items" };
-
-  if (!Array.isArray(items))
-    return {
-      isAccepted: false,
-      message: "Items must be a list",
-      field: "items",
-    };
-
-  if (items.length == 0)
-    return {
-      isAccepted: false,
-      message: "Items must not be empty",
-      field: "items",
-    };
-
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-
-    if (!item.numericId)
-      return {
-        isAccepted: false,
-        message: "item numeric ID is required",
-        field: "items",
-      };
-
-    if (typeof item.numericId != "number")
-      return {
-        isAccepted: false,
-        message: "item numeric ID format is invalid",
-        field: "items",
-      };
-
-    if (!item.name)
-      return {
-        isAccepted: false,
-        message: "item name is required",
-        field: "items",
-      };
-
-    if (typeof item.name != "string")
-      return {
-        isAccepted: false,
-        message: "item name format is invalid",
-        field: "items",
-      };
-
-    if (typeof item.quantity != "number")
-      return {
-        isAccepted: false,
-        message: "item quantity format is invalid",
-        field: "items",
-      };
-
-    if (typeof item.price != "number")
-      return {
-        isAccepted: false,
-        message: "item price format is invalid",
-        field: "items",
-      };
-
-    if (!item.itemId)
-      return {
-        isAccepted: false,
-        message: "item id is required",
-        field: "items",
-      };
-
-    if (!utils.isObjectId(item.itemId))
-      return {
-        isAccepted: false,
-        message: "item id format is invalid",
-        field: "items",
-      };
-  }
-
-  return { isAccepted: true, message: "data is valid", data: orderData };
+module.exports = {
+  addOrderSchema,
+  updateOrderSchema,
 };
-
-const updateOrder = (orderData) => {
-  const { status, shippingName, shippingPhone, shippingAddress, shippingCity } =
-    orderData;
-
-  if (status && !config.STATUS_VALUES.includes(status))
-    return {
-      isAccepted: false,
-      message: "Status value is not registered",
-      field: "status",
-    };
-
-  if (shippingName && typeof shippingName != "string")
-    return {
-      isAccepted: false,
-      message: "Shipping name format is invalid",
-      field: "shippingName",
-    };
-
-  if (shippingPhone && typeof shippingPhone != "string")
-    return {
-      isAccepted: false,
-      message: "Shipping phone format is invalid",
-      field: "shippingPhone",
-    };
-
-  if (shippingAddress && typeof shippingAddress != "string")
-    return {
-      isAccepted: false,
-      message: "Shipping address format is invalid",
-      field: "shippingAddress",
-    };
-
-  if (shippingCity && typeof shippingCity != "string")
-    return {
-      isAccepted: false,
-      message: "Shipping city format is invalid",
-      field: "shippingCity",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: orderData };
-};
-
-module.exports = { addOrder, updateOrder };

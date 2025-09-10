@@ -1,25 +1,11 @@
-const utils = require("../utils/utils");
+const { z } = require("zod");
+const { isObjectId } = require("../utils/validateObjectId");
 
-const createPaymentURL = (paymentData) => {
-  const { userId, planId } = paymentData;
-
-  if (!userId || !utils.isObjectId(userId))
-    return {
-      isAccepted: false,
-      message: "User Id format is invalid",
-      field: "userId",
-    };
-
-  if (!planId || !utils.isObjectId(planId))
-    return {
-      isAccepted: false,
-      message: "Plan Id format is invalid",
-      field: "planId",
-    };
-
-  return { isAccepted: true, message: "data is valid", data: paymentData };
-};
+const createPaymentURLSchema = z.object({
+  userId: z.string().refine(isObjectId, "User Id format is invalid"),
+  planId: z.string().refine(isObjectId, "Plan Id format is invalid"),
+});
 
 module.exports = {
-  createPaymentURL,
+  createPaymentURLSchema,
 };
