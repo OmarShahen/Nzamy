@@ -7,7 +7,7 @@ const { scoreItems } = require("../../../utils/score-items");
 
 const searchItems = async ({ storeId, categoryId, nameQuery }) => {
   const searchQuery = {
-    storeId: mongoose.Types.ObjectId(storeId),
+    storeId: new mongoose.Types.ObjectId(storeId),
     name: { $regex: nameQuery, $options: "i" },
   };
 

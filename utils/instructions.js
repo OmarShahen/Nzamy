@@ -118,9 +118,9 @@ Return & Refund Policy:
 
 function generateStoreInstructions(store, categories) {
   const sections = [
-    //generateAssistantProfileInstructions(store),
+    generateAssistantProfileInstructions(store),
     generateBasicInfoInstructions(store),
-    // generateCategoriesInstructions(categories),
+    //generateCategoriesInstructions(categories),
     // generateShippingPolicyInstructions(store),
     // generateReturnPolicyInstructions(store),
     //getMessengerPlainTextInstructions(),

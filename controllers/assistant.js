@@ -418,8 +418,7 @@ const askAssistant = async (request, response, next) => {
       chat = await chatObj.save();
     }
 
-    validatedData.chatId = chat._id
-    const messageResponse = await assistantService.askServiceV2(validatedData);
+    const messageResponse = await assistantService.askService({ message, threadId, storeId });
 
     const { userTokens, botTokens, totalTokens } = messageResponse.usage;
 

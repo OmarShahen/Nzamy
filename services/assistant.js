@@ -148,89 +148,133 @@ const askService = async (askData) => {
 };
 
 const askServiceV2 = async (askData) => {
-  let { message, storeId, senderId, chatId } = askData;
+  const { message, storeId, senderId, chatId, userId } = askData;
 
+  let totalTokens = 0
+  const toSaveMessages = []
+
+  // Validate store
   const store = await StoreModel.findById(storeId);
   if (!store) {
-    throw new Error("store Id is not registered");
+    throw new Error("Store ID is not registered");
   }
 
   store.senderId = senderId;
   const storeInstructions = generateStoreInstructions(store, []);
 
-  // Fetch last 20 messages
+  // Fetch last 20 messages (latest first, then sort ascending)
   const chatMessages = await MessageModel.find({ chatId })
-    .sort({ createdAt: 1 })
-    .limit(20);
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .sort({ createdAt: 1 });
 
-  const messages = chatMessages.map(msg => ({
+  const messages = chatMessages.map((msg) => ({
     role: msg.role,
-    content: msg.content
+    content: msg.content,
   }));
 
-  const systemInstructionMessage = { role: "system", content: storeInstructions };
   const chatHistory = [
-    systemInstructionMessage,
+    { role: "system", content: storeInstructions },
     ...messages,
     { role: "user", content: message },
   ];
 
-  console.log(chatHistory);
+  console.log("Chat history:", chatHistory);
 
+  let finalMessage
+
+  // Initial call
   let response = await openai.responses.create({
     model: config.LLM_MODEL,
     input: chatHistory,
     tools: toolDefinitions,
   });
 
-  console.log("Initial response:", response);
+  totalTokens += response.usage.total_tokens
+  finalMessage = response.output_text
 
-  // Loop until no more tool calls
-  while (true) {
-  const toolCalls = response.output
-    .flatMap((o) => o.content || [])
-    .filter((c) => c && c.type === "tool_call");
+  toSaveMessages.push({
+    userId,
+    storeId,
+    chatId,
+    role: 'user',
+    content: message,
+    tokens: response.usage.input_tokens,
+    createdAt: new Date()
+  })
 
-  if (!toolCalls.length) break;
+  toSaveMessages.push({
+    userId,
+    storeId,
+    chatId,
+    role: 'assistant',
+    content: response.output_text || 'tool_call',
+    tokens: response.usage.output_tokens,
+    createdAt: new Date()
+  })
 
-  console.log("Tool calls detected:", toolCalls);
+  while(true) {
+    try {
 
-  const toolResponses = await Promise.all(
-    toolCalls.map(async (toolCall) => {
-      const output = await runToolsFunction(toolCall);
-      return {
-        role: "assistant",
-        content: [
-          {
-            type: "tool_result",
-            tool_call_id: toolCall.id,
-            output,
-          },
-        ],
-      };
-    })
-  );
+      const responseOutputList = response.output.filter(output => output.type == 'function_call')
+      if(responseOutputList.length == 0) {
+        break
+      }
+      
+      const toolResponses = await Promise.all(responseOutputList.map(async tool => {
+        const result = await runToolsFunction({ name: tool.name, arguments: tool.arguments })
+        return {
+          role: 'assistant',
+          content: result
+        }
+      }))
 
-  chatHistory.push(...toolResponses);
+      toSaveMessages.push(...toolResponses.map(tool => ({
+        userId,
+        storeId,
+        chatId,
+        role: 'assistant',
+        content: tool.content,
+        tokens: 0,
+        createdAt: new Date()
+      })))
 
-  response = await openai.responses.create({
-    model: config.LLM_MODEL,
-    input: chatHistory,
-    tools: toolDefinitions,
-  });
-}
+      chatHistory.push(...toolResponses)
 
+      const response2 = await openai.responses.create({
+        model: config.LLM_MODEL,
+        input: chatHistory,
+        tools: toolDefinitions,
+      })
 
-  console.log(response.usage);
+      totalTokens += response2.usage.total_tokens
+      finalMessage = response2.output_text
 
-  const usage = {
-    userTokens: response.usage.input_tokens,
-    botTokens: response.usage.output_tokens,
-    totalTokens: response.usage.total_tokens,
+      toSaveMessages.push({
+        userId,
+        storeId,
+        chatId,
+        role: 'assistant',
+        content: response2.output_text,
+        tokens: response2.usage.output_tokens,
+        createdAt: new Date()
+      })
+      break
+
+    } catch(error) {
+      console.error(error)
+      break
+    }
+
+  }
+
+  return {
+    finalMessage,
+    messages: toSaveMessages,
+    totalTokens,
   };
-
-  return { message: response.output_text, usage };
 };
+
 
 
 module.exports = { askService, askServiceV2 };
