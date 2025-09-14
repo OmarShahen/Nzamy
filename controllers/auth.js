@@ -3,16 +3,13 @@ const authValidation = require("../validations/auth");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const UserModel = require("../models/UserModel");
-const CounterModel = require("../models/CounterModel");
 const EmailVerificationModel = require("../models/EmailVerificationModel");
 const { generateVerificationCode } = require("../utils/random-number");
 const utils = require("../utils/utils");
 const {
   sendForgotPasswordVerificationCode,
 } = require("../mails/forgot-password");
-const { sendDeleteAccountCode } = require("../mails/delete-account");
 const { sendVerificationCode } = require("../mails/verification-code");
-const translations = require("../i18n/index");
 const axios = require("axios");
 const { AppError } = require("../middlewares/errorHandler");
 
@@ -93,7 +90,11 @@ const login = async (request, response, next) => {
 
     updatedUser.password = undefined;
 
-    const token = jwt.sign(user._doc, config.SECRET_KEY, { expiresIn: "30d" });
+    const accessTokenData = {
+      _id: user._id,      
+    }
+
+    const token = jwt.sign(accessTokenData, config.SECRET_KEY, { expiresIn: "30d" });
 
     return response.status(200).json({
       accepted: true,
@@ -397,7 +398,6 @@ module.exports = {
   login,
   signup,
   verifyEmailVerificationCode,
-  verifyEmail,
   addUserEmailVerificationCode,
   forgotPassword,
   resetPassword,
