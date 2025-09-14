@@ -4,7 +4,7 @@ const { sendOrderByEmail } = require("./functions/orders");
 const {
   getStoreShippingPolicy,
   getStoreRefundPolicy,
-  getStorePaymentsOptions,
+  getStorePaymentOptions,
 } = require("./functions/stores");
 const {
   sendImageToFacebookUser,
@@ -43,7 +43,7 @@ const runToolsFunction = async (toolCall) => {
     }
 
     if (name === "getStorePaymentOptions") {
-      const result = await getStorePaymentsOptions(args);
+      const result = await getStorePaymentOptions(args);
       return JSON.stringify(result);
     }
 

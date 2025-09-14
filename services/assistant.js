@@ -4,6 +4,9 @@ const { generateStoreInstructions } = require("../utils/instructions");
 const StoreModel = require("../models/StoreModel");
 const runToolsFunction = require("../agents/tools/run-tools-functions");
 const CategoryModel = require("../models/CategoryModel");
+const MessageModel = require("../models/MessageModel");
+const toolDefinitions = require("../agents/tools/definitions");
+
 
 async function ensureNoActiveRuns(threadId) {
   try {
@@ -144,4 +147,90 @@ const askService = async (askData) => {
   return { threadId, message: lastMessage, usage };
 };
 
-module.exports = { askService };
+const askServiceV2 = async (askData) => {
+  let { message, storeId, senderId, chatId } = askData;
+
+  const store = await StoreModel.findById(storeId);
+  if (!store) {
+    throw new Error("store Id is not registered");
+  }
+
+  store.senderId = senderId;
+  const storeInstructions = generateStoreInstructions(store, []);
+
+  // Fetch last 20 messages
+  const chatMessages = await MessageModel.find({ chatId })
+    .sort({ createdAt: 1 })
+    .limit(20);
+
+  const messages = chatMessages.map(msg => ({
+    role: msg.role,
+    content: msg.content
+  }));
+
+  const systemInstructionMessage = { role: "system", content: storeInstructions };
+  const chatHistory = [
+    systemInstructionMessage,
+    ...messages,
+    { role: "user", content: message },
+  ];
+
+  console.log(chatHistory);
+
+  let response = await openai.responses.create({
+    model: config.LLM_MODEL,
+    input: chatHistory,
+    tools: toolDefinitions,
+  });
+
+  console.log("Initial response:", response);
+
+  // Loop until no more tool calls
+  while (true) {
+  const toolCalls = response.output
+    .flatMap((o) => o.content || [])
+    .filter((c) => c && c.type === "tool_call");
+
+  if (!toolCalls.length) break;
+
+  console.log("Tool calls detected:", toolCalls);
+
+  const toolResponses = await Promise.all(
+    toolCalls.map(async (toolCall) => {
+      const output = await runToolsFunction(toolCall);
+      return {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_result",
+            tool_call_id: toolCall.id,
+            output,
+          },
+        ],
+      };
+    })
+  );
+
+  chatHistory.push(...toolResponses);
+
+  response = await openai.responses.create({
+    model: config.LLM_MODEL,
+    input: chatHistory,
+    tools: toolDefinitions,
+  });
+}
+
+
+  console.log(response.usage);
+
+  const usage = {
+    userTokens: response.usage.input_tokens,
+    botTokens: response.usage.output_tokens,
+    totalTokens: response.usage.total_tokens,
+  };
+
+  return { message: response.output_text, usage };
+};
+
+
+module.exports = { askService, askServiceV2 };

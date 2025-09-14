@@ -118,12 +118,12 @@ Return & Refund Policy:
 
 function generateStoreInstructions(store, categories) {
   const sections = [
-    generateAssistantProfileInstructions(store),
+    //generateAssistantProfileInstructions(store),
     generateBasicInfoInstructions(store),
-    generateCategoriesInstructions(categories),
-    generateShippingPolicyInstructions(store),
-    generateReturnPolicyInstructions(store),
-    getMessengerPlainTextInstructions(),
+    // generateCategoriesInstructions(categories),
+    // generateShippingPolicyInstructions(store),
+    // generateReturnPolicyInstructions(store),
+    //getMessengerPlainTextInstructions(),
   ];
 
   return sections.filter(Boolean).join("\n\n");

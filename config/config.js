@@ -5,6 +5,7 @@ module.exports = {
     process.env.NODE_ENV == "production"
       ? process.env.PROD_DB_URL
       : process.env.DB_URL,
+  LLM_MODEL: 'gpt-4o-mini',
   WEB_BASE_URL: "http://localhost:3000",
   PAGINATION_LIMIT: 10,
   SUPPORT_NUMBER: "+201555415331",

@@ -13,6 +13,8 @@ const { formatResponseForMessenger } = require("../utils/format-string");
 const subscriptionsUtils = require("../utils/subscriptions");
 const { uploadFacebookImageToFirebase } = require("../utils/image-converter");
 const { sendImageWithText } = require("../utils/send-facebook-image");
+const { AppError } = require("../middlewares/errorHandler");
+
 
 // Message deduplication cache
 const processedMessages = new Map();
@@ -381,26 +383,15 @@ async function formatChannelsFromWhatsapp(accessToken, userId) {
   return channels;
 }
 
-const askAssistant = async (request, response) => {
+const askAssistant = async (request, response, next) => {
   try {
-    const dataValidation = assistantValidation.askAssistant(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
+    const validatedData = assistantValidation.askAssistantSchema.parse(request.body)
 
-    let { threadId, storeId, message } = request.body;
+    let { threadId, storeId, message } = validatedData;
 
     const store = await StoreModel.findById(storeId);
     if (!store) {
-      return response.status(400).json({
-        accepted: false,
-        message: "store Id not found",
-        field: "storeId",
-      });
+      throw new AppError('store not found', 400)
     }
 
     if (!threadId) {
@@ -412,23 +403,12 @@ const askAssistant = async (request, response) => {
       await subscriptionsUtils.getUserActiveSubscription(store.userId);
 
     if (!activeSubscription) {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          "Your subscription has expired. Please renew to continue enjoying all features",
-        field: "userId",
-      });
+      throw new AppError("Your subscription has expired. Please renew to continue enjoying all features", 400)
     }
 
     let chat = await ChatModel.findOne({ threadId });
     if (!chat) {
-      const counter = await CounterModel.findOneAndUpdate(
-        { name: `chat-${store._id}` },
-        { $inc: { value: 1 } },
-        { new: true, upsert: true }
-      );
       const chatData = {
-        chatId: counter.value,
         userId: store.userId,
         storeId: store._id,
         threadId,
@@ -438,7 +418,8 @@ const askAssistant = async (request, response) => {
       chat = await chatObj.save();
     }
 
-    const messageResponse = await assistantService.askService(request.body);
+    validatedData.chatId = chat._id
+    const messageResponse = await assistantService.askServiceV2(validatedData);
 
     const { userTokens, botTokens, totalTokens } = messageResponse.usage;
 
@@ -450,6 +431,7 @@ const askAssistant = async (request, response) => {
         role: "user",
         content: message,
         tokens: userTokens,
+        createdAt: new Date()
       },
       {
         userId: chat.userId,
@@ -458,6 +440,7 @@ const askAssistant = async (request, response) => {
         role: "assistant",
         content: messageResponse.message,
         tokens: botTokens,
+        createdAt: new Date()
       },
     ];
 
@@ -472,19 +455,14 @@ const askAssistant = async (request, response) => {
       accepted: true,
       usage: messageResponse.usage,
       message: messageResponse.message,
-      threadId: messageResponse.threadId,
+      threadId,
       subscription: updatedSubscription,
       messages,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
-  }
+    next(error)
 };
+}
 
 const verifyMessenger = (request, response) => {
   try {
@@ -923,5 +901,5 @@ module.exports = {
   askAssistantThroughMessenger,
   facebookCallback,
   testFacebookImageUpload,
-  testSendFacebookImage,
-};
+  testSendFacebookImage
+}
