@@ -11,8 +11,9 @@ const {
   searchImageByDescriptionService,
 } = require("../services/embeddings");
 const { scoreItems } = require("../utils/score-items");
+const { AppError } = require("../middlewares/errorHandler");
 
-const getItems = async (request, response) => {
+const getItems = async (request, response, next) => {
   try {
     let { userId, storeId, categoryId, name, limit, page } = request.query;
 
@@ -24,15 +25,15 @@ const getItems = async (request, response) => {
     const skip = (page - 1) * limit;
 
     if (userId) {
-      searchQuery.userId = mongoose.Types.ObjectId(userId);
+      searchQuery.userId = new mongoose.Types.ObjectId(userId);
     }
 
     if (storeId) {
-      searchQuery.storeId = mongoose.Types.ObjectId(storeId);
+      searchQuery.storeId = new mongoose.Types.ObjectId(storeId);
     }
 
     if (categoryId) {
-      searchQuery.categoryId = mongoose.Types.ObjectId(categoryId);
+      searchQuery.categoryId = new mongoose.Types.ObjectId(categoryId);
     }
 
     if (name) {
@@ -90,16 +91,11 @@ const getItems = async (request, response) => {
       items,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const getItem = async (request, response) => {
+const getItem = async (request, response, next) => {
   try {
     const { itemId } = request.params;
 
@@ -112,28 +108,16 @@ const getItem = async (request, response) => {
       item,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const searchItemsByImage = async (request, response) => {
+const searchItemsByImage = async (request, response, next) => {
   try {
-    const dataValidation = itemValidation.searchItemsByImage(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
+    const validatedData = itemValidation.searchItemsByImageSchema.parse(request.body);
 
     const { storeId } = request.params;
-    const { imageURL } = request.body;
+    const { imageURL } = validatedData;
 
     const { description, vector: queryVector } =
       await searchImageByDescriptionService(imageURL);
@@ -148,72 +132,37 @@ const searchItemsByImage = async (request, response) => {
       items: nearestItems,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const addItem = async (request, response) => {
+const addItem = async (request, response, next) => {
   try {
-    const dataValidation = itemValidation.addItem(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
+    const validatedData = itemValidation.addItemSchema.parse(request.body);
 
-    const { userId, storeId, categoryId, name } = request.body;
+    const { userId, storeId, categoryId, name } = validatedData;
 
     const user = await UserModel.findById(userId);
     if (!user) {
-      return response.status(400).json({
-        accepted: false,
-        message: "User ID does not exist",
-        field: "userId",
-      });
+      throw new AppError("User ID does not exist", 400)
     }
 
     const store = await StoreModel.findById(storeId);
     if (!store) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Store ID does not exist",
-        field: "storeId",
-      });
+      throw new AppError("Store ID does not exist", 400)
     }
 
     const category = await CategoryModel.findById(categoryId);
     if (!category) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Category ID does not exist",
-        field: "categoryId",
-      });
+      throw new AppError("Category ID does not exist", 400)
     }
 
     const totalNames = await ItemModel.countDocuments({ storeId, name });
     if (totalNames != 0) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Item name is already registered",
-        field: "name",
-      });
+      throw new AppError("Item name is already registered", 400)
     }
 
-    const counter = await CounterModel.findOneAndUpdate(
-      { name: `item-${storeId}` },
-      { $inc: { value: 1 } },
-      { new: true, upsert: true }
-    );
-
-    const itemData = { itemId: counter.value, ...request.body };
-    const itemObj = new ItemModel(itemData);
+    const itemObj = new ItemModel(validatedData);
     const newItem = await itemObj.save();
 
     return response.status(200).json({
@@ -222,37 +171,21 @@ const addItem = async (request, response) => {
       item: newItem,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const updateItem = async (request, response) => {
+const updateItem = async (request, response, next) => {
   try {
-    const dataValidation = itemValidation.updateItem(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
+    const validatedData = itemValidation.updateItemSchema.parse(request.body);
 
     const { itemId } = request.params;
-    const { categoryId, name } = request.body;
+    const { categoryId, name } = validatedData;
 
     if (categoryId) {
       const category = await CategoryModel.findById(categoryId);
       if (!category) {
-        return response.status(400).json({
-          accepted: false,
-          message: "Category ID does not exist",
-          field: "categoryId",
-        });
+        throw new AppError("Category ID does not exist", 400)
       }
     }
 
@@ -264,17 +197,13 @@ const updateItem = async (request, response) => {
         storeId: item.storeId,
       });
       if (totalNames != 0) {
-        return response.status(400).json({
-          accepted: false,
-          message: "Item name is already registered",
-          field: "name",
-        });
+        throw new AppError("Item name is already registered", 400)
       }
     }
 
     const updatedItem = await ItemModel.findByIdAndUpdate(
       itemId,
-      request.body,
+      validatedData,
       { new: true }
     );
 
@@ -284,28 +213,16 @@ const updateItem = async (request, response) => {
       item: updatedItem,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const updateItemImagesVectors = async (request, response) => {
+const updateItemImagesVectors = async (request, response, next) => {
   try {
-    const dataValidation = itemValidation.updateItemImagesVectors(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
+    const validatedData = itemValidation.updateItemImagesVectorsSchema.parse(request.body);
 
     const { itemId } = request.params;
-    const { images } = request.body;
+    const { images } = validatedData;
 
     const newImages = await generateImageEmbeddingsService(images);
 
@@ -323,16 +240,11 @@ const updateItemImagesVectors = async (request, response) => {
       item: updatedItem,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const deleteItem = async (request, response) => {
+const deleteItem = async (request, response, next) => {
   try {
     const { itemId } = request.params;
 
@@ -344,16 +256,11 @@ const deleteItem = async (request, response) => {
       item: deletedItem,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const getItemsGrowthStats = async (request, response) => {
+const getItemsGrowthStats = async (request, response, next) => {
   try {
     const { groupBy } = request.query;
 
@@ -389,12 +296,7 @@ const getItemsGrowthStats = async (request, response) => {
       itemsGrowth,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 

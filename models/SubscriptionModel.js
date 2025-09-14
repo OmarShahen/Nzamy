@@ -1,9 +1,10 @@
 const mongoose = require("mongoose");
 const config = require("../config/config");
+const CounterModel = require("./CounterModel");
 
 const SubscriptionSchema = new mongoose.Schema(
   {
-    subscriptionId: { type: Number, required: true },
+    subscriptionId: { type: Number },
     userId: { type: mongoose.Types.ObjectId, required: true },
     planId: { type: mongoose.Types.ObjectId, required: true },
     paymentId: { type: mongoose.Types.ObjectId },
@@ -15,5 +16,23 @@ const SubscriptionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+SubscriptionSchema.pre('save', async function(next) {
+  if (this.isNew) {
+    try {
+      const counter = await CounterModel.findOneAndUpdate(
+        { name: `subscription` },
+        { $inc: { value: 1 } },
+        { new: true, upsert: true }
+      );
+      this.subscriptionId = counter.value;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    next();
+  }
+});
 
 module.exports = mongoose.model("Subscription", SubscriptionSchema);

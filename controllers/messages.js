@@ -2,7 +2,7 @@ const MessageModel = require("../models/MessageModel");
 const mongoose = require("mongoose");
 const config = require("../config/config");
 
-const getMessages = async (request, response) => {
+const getMessages = async (request, response, next) => {
   try {
     let { userId, storeId, chatId, role, limit, page } = request.query;
 
@@ -14,15 +14,15 @@ const getMessages = async (request, response) => {
     const skip = (page - 1) * limit;
 
     if (userId) {
-      searchQuery.userId = mongoose.Types.ObjectId(userId);
+      searchQuery.userId = new mongoose.Types.ObjectId(userId);
     }
 
     if (storeId) {
-      searchQuery.storeId = mongoose.Types.ObjectId(storeId);
+      searchQuery.storeId = new mongoose.Types.ObjectId(storeId);
     }
 
     if (chatId) {
-      searchQuery.chatId = mongoose.Types.ObjectId(chatId);
+      searchQuery.chatId = new mongoose.Types.ObjectId(chatId);
     }
 
     if (role) {
@@ -89,16 +89,11 @@ const getMessages = async (request, response) => {
       messages,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const deleteMessage = async (request, response) => {
+const deleteMessage = async (request, response, next) => {
   try {
     const { messageId } = request.params;
 
@@ -110,12 +105,7 @@ const deleteMessage = async (request, response) => {
       chatMessage: deletedMessage,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 

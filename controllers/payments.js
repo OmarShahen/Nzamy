@@ -2,7 +2,6 @@ const config = require("../config/config");
 const { concatenateHmacString } = require("../utils/utils");
 const crypto = require("crypto");
 const PaymentModel = require("../models/PaymentModel");
-const CounterModel = require("../models/CounterModel");
 const paymentValidation = require("../validations/payments");
 const axios = require("axios");
 const UserModel = require("../models/UserModel");
@@ -13,36 +12,22 @@ const utils = require("../utils/utils");
 const email = require("../mails/send-email");
 const mongoose = require("mongoose");
 const paymentMailTemplate = require("../mails/templates/payment");
+const { AppError } = require("../middlewares/errorHandler");
 
-const createPaymentURL = async (request, response) => {
+const createPaymentURL = async (request, response, next) => {
   try {
-    const dataValidation = paymentValidation.createPaymentURL(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
+    const validatedData = paymentValidation.createPaymentURLSchema.parse(request.body);
 
-    const { userId, planId } = request.body;
+    const { userId, planId } = validatedData;
 
     const user = await UserModel.findById(userId);
     if (!user) {
-      return response.status(400).json({
-        accepted: false,
-        message: "User ID is not registered",
-        field: "userId",
-      });
+      throw new AppError("User ID is not registered", 400)
     }
 
     const plan = await PlanModel.findById(planId);
     if (!plan) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Plan ID is not registered",
-        field: "planId",
-      });
+      throw new AppError("Plan ID is not registered", 400)
     }
 
     const firstName = user.firstName;
@@ -119,16 +104,11 @@ const createPaymentURL = async (request, response) => {
       iFrameURL,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const processPayment = async (request, response) => {
+const processPayment = async (request, response, next) => {
   try {
     const payment = request.body.obj;
     const paymobHmac = request.query.hmac;
@@ -165,47 +145,28 @@ const processPayment = async (request, response) => {
     const verifiedPaymentHmac = hash.digest("hex");
 
     if (paymobHmac != verifiedPaymentHmac) {
-      return response.status(400).json({
-        accepted: false,
-        message: "invalid payment hmac",
-        field: "hmac",
-      });
+      throw new AppError("invalid payment hmac", 400)
     }
 
     if (!payment.success) {
-      return response.status(400).json({
-        accepted: false,
-        message: "payment is not successful",
-        field: "payment.success",
-      });
+      throw new AppError("payment is not successful", 400)
     }
 
     const items = payment.order.items;
 
     if (items.length == 0) {
-      return response.status(400).json({
-        accepted: false,
-        message: "no item is registered in the order",
-        field: "payment.order.items",
-      });
+      throw new AppError("no item is registered in the order", 400)
     }
 
     const item = items[0];
     const planId = item.name;
     const userId = item.description;
 
-    const counter = await CounterModel.findOneAndUpdate(
-      { name: "payment" },
-      { $inc: { value: 1 } },
-      { new: true, upsert: true }
-    );
-
     const paymentData = {
-      paymentId: counter.value,
       userId,
       transactionId: payment.id,
-      status: "SUCCESS",
-      gateway: "PAYMOB",
+      status: "success",
+      gateway: "paymob",
       method: payment.data.klass,
       orderId: payment.order.id,
       amountCents: payment.amount_cents,
@@ -222,7 +183,7 @@ const processPayment = async (request, response) => {
 
     const activeSubscription = await SubscriptionModel.findOne({
       userId,
-      status: "PAID",
+      status: "paid",
       endDate: { $gte: todayDate },
     });
 
@@ -231,18 +192,11 @@ const processPayment = async (request, response) => {
       : todayDate;
     const endDate = utils.addDays(startDate, plan.duration);
 
-    const subscriptionCounter = await CounterModel.findOneAndUpdate(
-      { name: "subscription" },
-      { $inc: { value: 1 } },
-      { new: true, upsert: true }
-    );
-
     const subscriptionData = {
-      subscriptionId: subscriptionCounter.value,
       paymentId: newPayment._id,
       userId,
       planId,
-      status: "PAID",
+      status: "paid",
       startDate,
       endDate,
       tokensLimit: plan.tokensLimit,
@@ -280,16 +234,11 @@ const processPayment = async (request, response) => {
       subscription: newSubscription,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const getPayments = async (request, response) => {
+const getPayments = async (request, response, next) => {
   try {
     let { userId, status, gateway, method, limit, page } = request.query;
 
@@ -301,7 +250,7 @@ const getPayments = async (request, response) => {
     const skip = (page - 1) * limit;
 
     if (userId) {
-      searchQuery.userId = mongoose.Types.ObjectId(userId);
+      searchQuery.userId = new mongoose.Types.ObjectId(userId);
     }
 
     if (status) {
@@ -339,6 +288,11 @@ const getPayments = async (request, response) => {
           as: "user",
         },
       },
+      {
+        $project: {
+          'user.password': 0
+        }
+      }
     ]);
 
     payments.forEach((payment) => {
@@ -353,126 +307,19 @@ const getPayments = async (request, response) => {
       payments,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
-/*
-const getPaymentsStatistics = async (request, response) => {
-  try {
-    const { searchQuery } = utils.statsQueryGenerator("none", 0, request.query);
 
-    const matchQuery = { ...searchQuery };
 
-    const totalAmountPaidList = await PaymentModel.aggregate([
-      {
-        $match: matchQuery,
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$amountCents" },
-        },
-      },
-    ]);
-
-    const totalAmountPaidActiveList = await PaymentModel.aggregate([
-      {
-        $match: { ...matchQuery, isRefunded: false },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$amountCents" },
-        },
-      },
-    ]);
-
-    const totalAmountPaidRefundedList = await PaymentModel.aggregate([
-      {
-        $match: { ...matchQuery, isRefunded: true },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$amountCents" },
-        },
-      },
-    ]);
-
-    const totalAmountPaidCommissionList = await PaymentModel.aggregate([
-      {
-        $match: { ...matchQuery, isRefunded: false },
-      },
-      {
-        $project: {
-          commissionAmount: { $multiply: ["$commission", "$amountCents"] },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalCommission: { $sum: "$commissionAmount" },
-        },
-      },
-    ]);
-
-    let totalAmountPaid = 0;
-    let totalAmountPaidActive = 0;
-    let totalAmountPaidRefunded = 0;
-    let totalAmountPaidCommission = 0;
-
-    if (totalAmountPaidList.length != 0) {
-      totalAmountPaid = totalAmountPaidList[0].total / 100;
-    }
-
-    if (totalAmountPaidActiveList.length != 0) {
-      totalAmountPaidActive = totalAmountPaidActiveList[0].total / 100;
-    }
-
-    if (totalAmountPaidRefundedList.length != 0) {
-      totalAmountPaidRefunded = totalAmountPaidRefundedList[0].total / 100;
-    }
-
-    if (totalAmountPaidCommissionList.length != 0) {
-      totalAmountPaidCommission =
-        totalAmountPaidCommissionList[0].totalCommission / 100;
-    }
-
-    return response.status(200).json({
-      accepted: true,
-      totalAmountPaid,
-      totalAmountPaidActive,
-      totalAmountPaidRefunded,
-      totalAmountPaidCommission,
-    });
-  } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
-  }
-};*/
-
-const refundPayment = async (request, response) => {
+const refundPayment = async (request, response, next) => {
   try {
     const { paymentId } = request.params;
 
     const payment = await PaymentModel.findById(paymentId);
 
-    if (payment.status != "SUCCESS") {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          "Refund cannot be processed because the payment is not successful",
-        field: "paymentId",
-      });
+    if (payment.status != "success") {
+      throw new AppError("Refund cannot be processed because the payment is not successful", 400)
     }
 
     const authData = { api_key: config.PAYMOB_API_KEYS };
@@ -495,21 +342,17 @@ const refundPayment = async (request, response) => {
         refundBodyData
       );
     } catch (error) {
-      return response.status(400).json({
-        accepted: false,
-        message: "There was a problem refunding",
-        error: error?.response?.data?.message,
-      });
+      throw new AppError("There was a problem refunding", 400)
     }
 
     const updatedSubscription = await SubscriptionModel.findOneAndUpdate(
       { paymentId },
-      { status: "REFUNDED" },
+      { status: "refunded" },
       { new: true }
     );
 
     const refundDate = new Date();
-    const updatePaymentData = { status: "REFUNDED", refundDate };
+    const updatePaymentData = { status: "refunded", refundDate };
 
     const updatedPayment = await PaymentModel.findByIdAndUpdate(
       paymentId,
@@ -552,16 +395,11 @@ const refundPayment = async (request, response) => {
       subscription: updatedSubscription,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const deletePayment = async (request, response) => {
+const deletePayment = async (request, response, next) => {
   try {
     const { paymentId } = request.params;
 
@@ -573,12 +411,7 @@ const deletePayment = async (request, response) => {
       payment: deletedPayment,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 

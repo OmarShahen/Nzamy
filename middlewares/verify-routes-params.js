@@ -3,8 +3,6 @@ const { AppError } = require("../middlewares/errorHandler");
 const UserModel = require("../models/UserModel");
 const ItemModel = require("../models/ItemModel");
 const OrderModel = require("../models/OrderModel");
-const SupplierModel = require("../models/SupplierModel");
-const StockRecordModel = require("../models/StockRecordModel");
 const StoreModel = require("../models/StoreModel");
 const CategoryModel = require("../models/CategoryModel");
 const ChannelModel = require("../models/ChannelModel");
@@ -78,43 +76,6 @@ const verifyOrderId = async (request, response, next) => {
   }
 };
 
-const verifySupplierId = async (request, response, next) => {
-  try {
-    const { supplierId } = request.params;
-
-    if (!utils.isObjectId(supplierId)) {
-      throw new AppError("Invalid supplier ID format", 400);
-    }
-
-    const supplier = await SupplierModel.findById(supplierId);
-    if (!supplier) {
-      throw new AppError("Supplier ID does not exist", 404);
-    }
-
-    return next();
-  } catch (error) {
-    next(error);
-  }
-};
-
-const verifyStockRecordId = async (request, response, next) => {
-  try {
-    const { stockRecordId } = request.params;
-
-    if (!utils.isObjectId(stockRecordId)) {
-      throw new AppError("Invalid stock record ID format", 400);
-    }
-
-    const stockRecord = await StockRecordModel.findById(stockRecordId);
-    if (!stockRecord) {
-      throw new AppError("Stock record ID does not exist", 404);
-    }
-
-    return next();
-  } catch (error) {
-    next(error);
-  }
-};
 
 const verifyStoreId = async (request, response, next) => {
   try {
@@ -405,8 +366,6 @@ module.exports = {
   verifyUserId,
   verifyItemId,
   verifyOrderId,
-  verifySupplierId,
-  verifyStockRecordId,
   verifyStoreId,
   verifyCategoryId,
   verifyChannelId,

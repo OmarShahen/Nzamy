@@ -136,15 +136,15 @@ const getOrders = async (request, response, next) => {
     const skip = (page - 1) * limit;
 
     if (userId) {
-      searchQuery.userId = mongoose.Types.ObjectId(userId);
+      searchQuery.userId = new mongoose.Types.ObjectId(userId);
     }
 
     if (storeId) {
-      searchQuery.storeId = mongoose.Types.ObjectId(storeId);
+      searchQuery.storeId = new mongoose.Types.ObjectId(storeId);
     }
 
     if (customerId) {
-      searchQuery.customerId = mongoose.Types.ObjectId(customerId);
+      searchQuery.customerId = new mongoose.Types.ObjectId(customerId);
     }
 
     if (status) {
@@ -395,7 +395,7 @@ const updateOrder = async (request, response, next) => {
   }
 };
 
-const getOrdersGrowthStats = async (request, response) => {
+const getOrdersGrowthStats = async (request, response, next) => {
   try {
     const { groupBy } = request.query;
 
@@ -431,16 +431,11 @@ const getOrdersGrowthStats = async (request, response) => {
       ordersGrowth,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const getOrdersStats = async (request, response) => {
+const getOrdersStats = async (request, response, next) => {
   try {
     const { cashierId } = request.query;
 
@@ -499,16 +494,11 @@ const getOrdersStats = async (request, response) => {
       totalQuantity,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const getOrdersItemsQuantityStats = async (request, response) => {
+const getOrdersItemsQuantityStats = async (request, response, next) => {
   try {
     const { searchQuery } = utils.statsQueryGenerator("none", 0, request.query);
 
@@ -551,12 +541,7 @@ const getOrdersItemsQuantityStats = async (request, response) => {
       totalQuantityList,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 

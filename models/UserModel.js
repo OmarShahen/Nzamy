@@ -1,8 +1,9 @@
 const mongoose = require("mongoose");
+const CounterModel = require("./CounterModel");
 
 const UserSchema = new mongoose.Schema(
   {
-    userId: { type: Number, required: true, unique: true },
+    userId: { type: Number },
     firstName: { type: String },
     email: { type: String, required: true },
     phone: { type: String },
@@ -33,5 +34,23 @@ const UserSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+UserSchema.pre('save', async function(next) {
+  if (this.isNew) {
+    try {
+      const counter = await CounterModel.findOneAndUpdate(
+        { name: `user` },
+        { $inc: { value: 1 } },
+        { new: true, upsert: true }
+      );
+      this.userId = counter.value;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    next();
+  }
+});
 
 module.exports = mongoose.model("User", UserSchema);

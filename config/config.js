@@ -1,5 +1,5 @@
 module.exports = {
-  APP_NAME: `NZAMY`,
+  APP_NAME: `Converto`,
   PORT: process.env.APP_PORT,
   DB_URL:
     process.env.NODE_ENV == "production"
@@ -9,12 +9,8 @@ module.exports = {
   WEB_BASE_URL: "http://localhost:3000",
   PAGINATION_LIMIT: 10,
   SUPPORT_NUMBER: "+201555415331",
-  GENDER: ["MALE", "FEMALE"],
   SOURCES: ["whatsapp", "facebook", "instagram"],
-  ROLES: ["OWNER", "DOCTOR", "STAFF"],
-  TYPES: ["EMPLOYEE", "ADMIN"],
-  SPECIALITIES_TYPES: ["MAIN", "SUB"],
-  SUBSCRIPTION_STATUS: ["PAID", "REFUNDED", "CANCELLED"],
+  SUBSCRIPTION_STATUS: ["paid", "refunded", "cancelled"],
   OPENAI_API_KEYS: process.env.OPENAI_API_KEYS,
   OPENAI_ASSISTANT_ID: process.env.OPENAI_ASSISTANT_ID,
   EMAIL: {
@@ -40,9 +36,9 @@ module.exports = {
   SALT_ROUNDS: Number.parseInt(process.env.SALT_ROUNDS),
   SECRET_KEY: process.env.SECRET_KEY,
   NOTIFICATION_EMAIL: "omarredaelsayedmohamed@gmail.com",
-  LANGUAGES: ["ENGLISH", "ARABIC"],
-  PAYMENT_STATUS: ["SUCCESS", "PENDING", "FAILED", "REFUNDED"],
-  STATUS_VALUES: ["PENDING", "PAID", "REFUNDED", "FAILED", "CANCELLED"],
+  LANGUAGES: ["arabic", "english"],
+  PAYMENT_STATUS: ["success", "pending", "failed", "refunded"],
+  STATUS_VALUES: ["pending", "paid", "refunded", "failed", "cancelled"],
   TIME_UNIT: ["day", "week", "month"],
   WEEK_DAYS: [
     "SUNDAY",

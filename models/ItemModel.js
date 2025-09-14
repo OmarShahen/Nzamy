@@ -1,8 +1,9 @@
 const mongoose = require("mongoose");
+const CounterModel = require("./CounterModel");
 
 const ItemSchema = new mongoose.Schema(
   {
-    itemId: { type: Number, required: true },
+    itemId: { type: Number },
     userId: { type: mongoose.Types.ObjectId, required: true },
     storeId: { type: mongoose.Types.ObjectId, required: true },
     categoryId: { type: mongoose.Types.ObjectId, required: true },
@@ -23,5 +24,23 @@ const ItemSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+ItemSchema.pre('save', async function(next) {
+  if (this.isNew) {
+    try {
+      const counter = await CounterModel.findOneAndUpdate(
+        { name: `item-${this.storeId}` },
+        { $inc: { value: 1 } },
+        { new: true, upsert: true }
+      );
+      this.itemId = counter.value;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    next();
+  }
+});
 
 module.exports = mongoose.model("Item", ItemSchema);

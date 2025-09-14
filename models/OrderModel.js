@@ -11,7 +11,7 @@ const OrderItemSchema = new mongoose.Schema({
 
 const OrderSchema = new mongoose.Schema(
   {
-    orderId: { type: Number, required: true },
+    orderId: { type: Number },
     userId: { type: mongoose.Types.ObjectId, required: true },
     storeId: { type: mongoose.Types.ObjectId, required: true },
     customerId: { type: mongoose.Types.ObjectId, required: true },
@@ -63,7 +63,7 @@ const OrderSchema = new mongoose.Schema(
 // Pre-save middleware for auto-incrementing orderId and calculations
 OrderSchema.pre('save', async function(next) {
   // Generate orderId for new orders
-  if (this.isNew && !this.orderId) {
+  if (this.isNew) {
     try {
       const counter = await CounterModel.findOneAndUpdate(
         { name: `order-${this.storeId}` },

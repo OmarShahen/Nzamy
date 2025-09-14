@@ -97,18 +97,18 @@ const getAverageResponseTime = async (filter = {}) => {
   return result.length > 0 ? result[0].avgResponseTime : null;
 };
 
-const getEngagementStats = async (request, response) => {
+const getEngagementStats = async (request, response, next) => {
   try {
     let { userId, storeId } = request.query;
 
     const { current, previous, days } = buildDateRangeFilter(request.query);
 
     if (userId) {
-      userId = mongoose.Types.ObjectId(userId);
+      userId = new mongoose.Types.ObjectId(userId);
     }
 
     if (storeId) {
-      storeId = mongoose.Types.ObjectId(storeId);
+      storeId = new mongoose.Types.ObjectId(storeId);
     }
 
     const [currentTotalReceivedMessages, prevTotalReceivedMessages] =
@@ -170,16 +170,11 @@ const getEngagementStats = async (request, response) => {
       stats,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const getMessagesGrowthStats = async (request, response) => {
+const getMessagesGrowthStats = async (request, response, next) => {
   try {
     const { groupBy, userId, storeId } = request.query;
 
@@ -230,16 +225,11 @@ const getMessagesGrowthStats = async (request, response) => {
       messagesGrowth,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const getChatsGrowthStats = async (request, response) => {
+const getChatsGrowthStats = async (request, response, next) => {
   try {
     const { groupBy, userId, storeId } = request.query;
 
@@ -290,16 +280,11 @@ const getChatsGrowthStats = async (request, response) => {
       chatsGrowth,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const getChatsChannelsGrowthStats = async (request, response) => {
+const getChatsChannelsGrowthStats = async (request, response, next) => {
   try {
     const { userId, storeId } = request.query;
 
@@ -337,16 +322,11 @@ const getChatsChannelsGrowthStats = async (request, response) => {
       chatChannelsGrowth,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const getTokensStats = async (request, response) => {
+const getTokensStats = async (request, response, next) => {
   try {
     let { userId, storeId } = request.query;
 
@@ -427,16 +407,11 @@ const getTokensStats = async (request, response) => {
       },
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const getTokensGrowthStats = async (request, response) => {
+const getTokensGrowthStats = async (request, response, next) => {
   try {
     const { groupBy, userId, storeId } = request.query;
 
@@ -476,12 +451,7 @@ const getTokensGrowthStats = async (request, response) => {
       tokensGrowth,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 

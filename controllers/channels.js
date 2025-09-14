@@ -2,8 +2,9 @@ const ChannelModel = require("../models/ChannelModel");
 const mongoose = require("mongoose");
 const config = require("../config/config");
 const axios = require("axios");
+const { AppError } = require("../middlewares/errorHandler");
 
-const getChannels = async (request, response) => {
+const getChannels = async (request, response, next) => {
   try {
     let { userId, name, platform, category, limit, page } = request.query;
 
@@ -15,7 +16,7 @@ const getChannels = async (request, response) => {
     const skip = (page - 1) * limit;
 
     if (userId) {
-      searchQuery.userId = mongoose.Types.ObjectId(userId);
+      searchQuery.userId = new mongoose.Types.ObjectId(userId);
     }
 
     if (name) {
@@ -72,16 +73,11 @@ const getChannels = async (request, response) => {
       channels,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const deleteChannel = async (request, response) => {
+const deleteChannel = async (request, response, next) => {
   try {
     const { channelId } = request.params;
 
@@ -93,26 +89,17 @@ const deleteChannel = async (request, response) => {
       channel: deletedChannel,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const subscribeFacebookPage = async (request, response) => {
+const subscribeFacebookPage = async (request, response, next) => {
   try {
     const { channelId } = request.params;
 
     const channel = await ChannelModel.findById(channelId);
     if (!channel) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Channel not found",
-        field: "channelId",
-      });
+      throw new AppError("Channel not found", 400)
     }
 
     const facebookURL = `https://graph.facebook.com/v18.0/${
@@ -141,26 +128,17 @@ const subscribeFacebookPage = async (request, response) => {
       channel: updatedChannel,
     });
   } catch (error) {
-    console.error(error?.response?.data);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const unsubscribeFacebookPage = async (request, response) => {
+const unsubscribeFacebookPage = async (request, response, next) => {
   try {
     const { channelId } = request.params;
 
     const channel = await ChannelModel.findById(channelId);
     if (!channel) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Channel not found",
-        field: "channelId",
-      });
+      throw new AppError("Channel not found", 400)
     }
 
     const facebookURL = `https://graph.facebook.com/v18.0/${
@@ -189,12 +167,7 @@ const unsubscribeFacebookPage = async (request, response) => {
       channel: updatedChannel,
     });
   } catch (error) {
-    console.error(error?.response?.data);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 

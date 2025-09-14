@@ -6,8 +6,9 @@ const UserModel = require("../models/UserModel");
 const PlanModel = require("../models/PlanModel");
 const SubscriptionModel = require("../models/SubscriptionModel");
 const utils = require("../utils/utils");
+const { AppError } = require("../middlewares/errorHandler");
 
-const getSubscriptions = async (request, response) => {
+const getSubscriptions = async (request, response, next) => {
   try {
     let { userId, planId, paymentId, status, limit, page } = request.query;
 
@@ -19,15 +20,15 @@ const getSubscriptions = async (request, response) => {
     const skip = (page - 1) * limit;
 
     if (userId) {
-      searchQuery.userId = mongoose.Types.ObjectId(userId);
+      searchQuery.userId = new mongoose.Types.ObjectId(userId);
     }
 
     if (planId) {
-      searchQuery.planId = mongoose.Types.ObjectId(planId);
+      searchQuery.planId = new mongoose.Types.ObjectId(planId);
     }
 
     if (paymentId) {
-      searchQuery.paymentId = mongoose.Types.ObjectId(paymentId);
+      searchQuery.paymentId = new mongoose.Types.ObjectId(paymentId);
     }
 
     if (status) {
@@ -80,16 +81,11 @@ const getSubscriptions = async (request, response) => {
       subscriptions,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const getUserActiveSubscription = async (request, response) => {
+const getUserActiveSubscription = async (request, response, next) => {
   try {
     let { userId } = request.params;
 
@@ -97,7 +93,7 @@ const getUserActiveSubscription = async (request, response) => {
 
     const subscription = await SubscriptionModel.findOne({
       userId,
-      status: "PAID",
+      status: "paid",
       endDate: { $gte: todayDate },
       $expr: { $lt: ["$tokensUsed", "$tokensLimit"] },
     });
@@ -107,77 +103,46 @@ const getUserActiveSubscription = async (request, response) => {
       subscription,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const addSubscription = async (request, response) => {
+const addSubscription = async (request, response, next) => {
   try {
-    const dataValidation = subscriptionValidation.addSubscription(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
+    const validatedData = subscriptionValidation.addSubscriptionSchema.parse(request.body);
 
-    const { userId, planId } = request.body;
+    const { userId, planId } = validatedData;
 
     const user = await UserModel.findById(userId);
     if (!user) {
-      return response.status(400).json({
-        accepted: false,
-        message: "User ID does not exist",
-        field: "userId",
-      });
+      throw new AppError("User ID does not exist", 400)
     }
 
     const plan = await PlanModel.findById(planId);
     if (!plan) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Plan ID does not exist",
-        field: "planId",
-      });
+      throw new AppError("Plan ID does not exist", 400)
     }
 
     const todayDate = new Date();
 
     const activeSubscription = await SubscriptionModel.findOne({
       userId,
-      status: "PAID",
+      status: "paid",
       endDate: { $gte: todayDate },
       $expr: { $lt: ["$tokensUsed", "$tokensLimit"] },
     });
 
     if (activeSubscription) {
-      return response.status(400).json({
-        accepted: false,
-        message: "You already have active subscription",
-        field: "endDate",
-      });
+      throw new AppError("You already have active subscription", 400)
     }
-
-    const counter = await CounterModel.findOneAndUpdate(
-      { name: `subscription` },
-      { $inc: { value: 1 } },
-      { new: true, upsert: true }
-    );
 
     const startDate = new Date();
     const endDate = utils.addDays(startDate, plan.duration);
 
     const subscriptionData = {
-      subscriptionId: counter.value,
       userId,
       planId,
-      status: "PAID",
+      status: "paid",
       startDate,
       endDate,
       tokensLimit: plan.tokensLimit,
@@ -191,41 +156,25 @@ const addSubscription = async (request, response) => {
       subscription: newSubscription,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const updateSubscription = async (request, response) => {
+const updateSubscription = async (request, response, next) => {
   try {
-    const dataValidation = subscriptionValidation.updateSubscription(
+    const validatedData = subscriptionValidation.updateSubscriptionSchema.parse(
       request.body
     );
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
 
     const { subscriptionId } = request.params;
-    const { status } = request.body;
+    const { status } = validatedData;
 
     const subscription = await SubscriptionModel.findById(subscriptionId);
 
     const todayDate = new Date();
 
     if (new Date(subscription.endDate) < todayDate) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Subscription is already expired",
-        field: "status",
-      });
+      throw new AppError("Subscription is already expired", 400)
     }
 
     const updatedSubscription = await SubscriptionModel.findByIdAndUpdate(
@@ -240,16 +189,11 @@ const updateSubscription = async (request, response) => {
       subscription: updatedSubscription,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const deleteSubscription = async (request, response) => {
+const deleteSubscription = async (request, response, next) => {
   try {
     const { subscriptionId } = request.params;
 
@@ -258,11 +202,7 @@ const deleteSubscription = async (request, response) => {
     const todayDate = new Date();
 
     if (new Date(subscription.endDate) < todayDate) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Subscription is already expired",
-        field: "status",
-      });
+      throw new AppError("Subscription is already expired", 400)
     }
 
     const deletedSubscription = await SubscriptionModel.findByIdAndDelete(
@@ -275,22 +215,17 @@ const deleteSubscription = async (request, response) => {
       subscription: deletedSubscription,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const getUserActiveTokens = async (request, response) => {
+const getUserActiveTokens = async (request, response, next) => {
   try {
     const { userId } = request.params;
 
     const matchQuery = {
       userId: new mongoose.Types.ObjectId(userId),
-      status: "PAID",
+      status: "paid",
       endDate: { $gte: new Date() },
     };
 
@@ -316,12 +251,7 @@ const getUserActiveTokens = async (request, response) => {
       totalTokensUsed,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 

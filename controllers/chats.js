@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const config = require("../config/config");
 const ChatModel = require("../models/ChatModel");
 
-const getChats = async (request, response) => {
+const getChats = async (request, response, next) => {
   try {
     let { userId, storeId, channelUserId, platform, limit, page } =
       request.query;
@@ -15,11 +15,11 @@ const getChats = async (request, response) => {
     const skip = (page - 1) * limit;
 
     if (userId) {
-      searchQuery.userId = mongoose.Types.ObjectId(userId);
+      searchQuery.userId = new mongoose.Types.ObjectId(userId);
     }
 
     if (storeId) {
-      searchQuery.storeId = mongoose.Types.ObjectId(storeId);
+      searchQuery.storeId = new mongoose.Types.ObjectId(storeId);
     }
 
     if (channelUserId) {
@@ -90,16 +90,11 @@ const getChats = async (request, response) => {
       chats,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const deleteChat = async (request, response) => {
+const deleteChat = async (request, response, next) => {
   try {
     const { chatId } = request.params;
 
@@ -111,12 +106,7 @@ const deleteChat = async (request, response) => {
       chat: deletedChat,
     });
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 

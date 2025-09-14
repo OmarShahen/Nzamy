@@ -464,7 +464,7 @@ const askAssistant = async (request, response, next) => {
 };
 }
 
-const verifyMessenger = (request, response) => {
+const verifyMessenger = (request, response, next) => {
   try {
     const mode = request.query["hub.mode"];
     const token = request.query["hub.verify_token"];
@@ -476,16 +476,11 @@ const verifyMessenger = (request, response) => {
 
     return response.status(200).send(challenge);
   } catch (error) {
-    console.error(error);
-    return response.status(500).json({
-      accepted: false,
-      message: "internal server error",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const askAssistantThroughMessenger = async (request, response) => {
+const askAssistantThroughMessenger = async (request, response, next) => {
   // IMMEDIATELY respond with 200 to prevent Facebook retries
   response.sendStatus(200);
 
@@ -825,16 +820,12 @@ const facebookCallback = async (request, response) => {
   }
 };
 
-const testFacebookImageUpload = async (request, response) => {
+const testFacebookImageUpload = async (request, response, next) => {
   try {
     const { facebookUrl, accessToken } = request.body;
 
     if (!facebookUrl || !accessToken) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Facebook URL and access token are required",
-        fields: ["facebookUrl", "accessToken"],
-      });
+      throw new AppError("Facebook URL and access token are required", 400)
     }
 
     // Test the upload function
@@ -852,25 +843,16 @@ const testFacebookImageUpload = async (request, response) => {
       },
     });
   } catch (error) {
-    console.error("Test upload error:", error);
-    return response.status(500).json({
-      accepted: false,
-      message: "Failed to upload image",
-      error: error.message,
-    });
+    next(error)
   }
 };
 
-const testSendFacebookImage = async (request, response) => {
+const testSendFacebookImage = async (request, response, next) => {
   try {
     const { recipientId, imageUrl, accessToken, text } = request.body;
 
     if (!recipientId || !imageUrl || !accessToken) {
-      return response.status(400).json({
-        accepted: false,
-        message: "recipientId, imageUrl, and accessToken are required",
-        fields: ["recipientId", "imageUrl", "accessToken"],
-      });
+      throw new AppError("recipientId, imageUrl, and accessToken are required", 400)
     }
 
     const result = await sendImageWithText(
@@ -886,12 +868,7 @@ const testSendFacebookImage = async (request, response) => {
       data: result,
     });
   } catch (error) {
-    console.error("Test send image error:", error);
-    return response.status(500).json({
-      accepted: false,
-      message: "Failed to send image",
-      error: error.response?.data || error.message,
-    });
+    next(error)
   }
 };
 

@@ -1,9 +1,10 @@
 const mongoose = require("mongoose");
 const config = require("../config/config");
+const CounterModel = require("./CounterModel");
 
 const PaymentSchema = new mongoose.Schema(
   {
-    paymentId: { type: Number, required: true },
+    paymentId: { type: Number },
     userId: { type: mongoose.Types.ObjectId, required: true },
     transactionId: { type: String, required: true },
     status: { type: String, required: true, enum: config.PAYMENT_STATUS },
@@ -16,5 +17,23 @@ const PaymentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+PaymentSchema.pre('save', async function(next) {
+  if (this.isNew) {
+    try {
+      const counter = await CounterModel.findOneAndUpdate(
+        { name: `payment` },
+        { $inc: { value: 1 } },
+        { new: true, upsert: true }
+      );
+      this.paymentId = counter.value;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    next();
+  }
+});
 
 module.exports = mongoose.model("Payment", PaymentSchema);

@@ -14,39 +14,22 @@ const { sendDeleteAccountCode } = require("../mails/delete-account");
 const { sendVerificationCode } = require("../mails/verification-code");
 const translations = require("../i18n/index");
 const axios = require("axios");
+const { AppError } = require("../middlewares/errorHandler");
 
 const signup = async (request, response, next) => {
   try {
-    const dataValidation = authValidation.signup(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
+    const validatedData = authValidation.signupSchema.parse(request.body);
 
-    const { email, password } = request.body;
+    const { email, password } = validatedData;
 
     const emailList = await UserModel.find({ email, isVerified: true });
     if (emailList.length != 0) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Email is already registered",
-        field: "email",
-      });
+      throw new AppError("Email is already registered", 400)
     }
-
-    const counter = await CounterModel.findOneAndUpdate(
-      { name: "user" },
-      { $inc: { value: 1 } },
-      { new: true, upsert: true }
-    );
 
     const userPassword = bcrypt.hashSync(password, config.SALT_ROUNDS);
     let userData = {
-      ...request.body,
-      userId: counter.value,
+      ...validatedData,
       password: userPassword,
     };
     userData._id = undefined;
@@ -80,44 +63,26 @@ const signup = async (request, response, next) => {
 
 const login = async (request, response, next) => {
   try {
-    const data = authValidation.loginSchema.parse(request.body);
+    const validatedData = authValidation.loginSchema.parse(request.body);
 
-    const { email, password } = data;
+    const { email, password } = validatedData;
 
     const user = await UserModel.findOne({ email, isVerified: true });
 
     if (!user) {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          "Invalid email or password. Please check your credentials and try again",
-        field: "email",
-      });
+      throw new AppError("Invalid email or password. Please check your credentials and try again", 400)
     }
 
     if (user.isGoogle) {
-      return response.status(400).json({
-        accepted: false,
-        message: "your account was created using a different login method",
-        field: "email",
-      });
+      throw new AppError("your account was created using a different login method", 400)
     }
 
     if (user.isBlocked) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Account is blocked",
-        field: "email",
-      });
+      throw new AppError("Account is blocked", 400)
     }
 
     if (!bcrypt.compareSync(password, user.password)) {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          "Invalid email or password. Please check your credentials and try again",
-        field: "password",
-      });
+      throw new AppError("Invalid email or password. Please check your credentials and try again", 400)
     }
 
     const updatedUser = await UserModel.findByIdAndUpdate(
@@ -149,11 +114,7 @@ const verifyEmailVerificationCode = async (request, response, next) => {
       code: verificationCode,
     });
     if (emailVerificationList.length == 0) {
-      return response.status(400).json({
-        accepted: false,
-        message: "There is no verification code registered",
-        field: "code",
-      });
+      throw new AppError("There is no verification code registered", 400)
     }
 
     const updatedUserPromise = UserModel.findByIdAndUpdate(
@@ -187,35 +148,6 @@ const verifyEmailVerificationCode = async (request, response, next) => {
   }
 };
 
-const verifyEmail = async (request, response, next) => {
-  try {
-    const { email } = request.params;
-
-    if (!utils.isEmailValid(email)) {
-      return response.status(400).json({
-        accepted: false,
-        message: "email format is invalid",
-        field: "email",
-      });
-    }
-
-    const emailList = await UserModel.find({ email, isVerified: true });
-    if (emailList.length != 0) {
-      return response.status(400).json({
-        accepted: false,
-        message: "email is already registered",
-        field: "email",
-      });
-    }
-
-    return response.status(200).json({
-      accepted: true,
-      email,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
 
 const googleLogin = async (request, response, next) => {
   try {
@@ -236,19 +168,11 @@ const googleLogin = async (request, response, next) => {
     });
 
     if (!user) {
-      return response.status(400).json({
-        accepted: false,
-        message: "this email is not registered",
-        field: "email",
-      });
+      throw new AppError("this email is not registered", 400)
     }
 
     if (!user.isGoogle) {
-      return response.status(400).json({
-        accepted: false,
-        message: "your account was created using a different login method",
-        field: "email",
-      });
+      throw new AppError("your account was created using a different login method", 400)
     }
 
     const token = jwt.sign(user._doc, config.SECRET_KEY, { expiresIn: "365d" });
@@ -278,21 +202,10 @@ const googleSignup = async (request, response, next) => {
 
     const userEmail = await UserModel.findOne({ email, isVerified: true });
     if (userEmail) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Email is already registered",
-        field: "email",
-      });
+      throw new AppError("Email is already registered", 400)
     }
 
-    const counter = await CounterModel.findOneAndUpdate(
-      { name: "user" },
-      { $inc: { value: 1 } },
-      { new: true, upsert: true }
-    );
-
     const userData = {
-      userId: counter.value,
       firstName: name,
       email,
       imageURL: picture,
@@ -318,53 +231,22 @@ const googleSignup = async (request, response, next) => {
   }
 };
 
-const setUserVerified = async (request, response, next) => {
-  try {
-    const { userId } = request.params;
-
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      userId,
-      { isVerified: true },
-      { new: true }
-    );
-
-    return response.status(200).json({
-      accepted: true,
-      message: "account verified successfully!",
-      user: updatedUser,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
 
 const addUserEmailVerificationCode = async (request, response, next) => {
   try {
     const { userId } = request.params;
 
     if (!utils.isObjectId(userId)) {
-      return response.status(400).json({
-        accepted: false,
-        message: "user Id format is invalid",
-        field: "userId",
-      });
+      throw new AppError("user Id format is invalid", 400)
     }
 
     const user = await UserModel.findById(userId);
     if (!user) {
-      return response.status(400).json({
-        accepted: false,
-        message: "user Id does not exist",
-        field: "userId",
-      });
+      throw new AppError("user Id does not exist", 400)
     }
 
     if (user.isVerified) {
-      return response.status(400).json({
-        accepted: false,
-        message: "user account is already verified",
-        field: "userId",
-      });
+      throw new AppError("user account is already verified", 400)
     }
 
     const verificationCode = generateVerificationCode();
@@ -387,24 +269,13 @@ const addUserEmailVerificationCode = async (request, response, next) => {
 
 const forgotPassword = async (request, response, next) => {
   try {
-    const dataValidation = authValidation.forgotPassword(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
+    const validatedData = authValidation.forgotPasswordSchema.parse(request.body);
 
-    const { email } = request.body;
+    const { email } = validatedData;
 
     const emailList = await UserModel.find({ email, isVerified: true });
     if (emailList.length == 0) {
-      return response.status(400).json({
-        accepted: false,
-        message: translations[request.query.lang]["Email is not registered"],
-        field: "email",
-      });
+      throw new AppError("Email is not registered", 400)
     }
 
     const user = emailList[0];
@@ -432,14 +303,7 @@ const forgotPassword = async (request, response, next) => {
     ]);
 
     if (!sendEmail.isSent) {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          translations[request.query.lang][
-            "There was a problem sending your email"
-          ],
-        field: "isSent",
-      });
+      throw new AppError("There was a problem sending your email", 400)
     }
 
     return response.status(200).json({
@@ -451,134 +315,14 @@ const forgotPassword = async (request, response, next) => {
   }
 };
 
-const sendUserDeleteAccountVerificationCode = async (
-  request,
-  response,
-  next
-) => {
-  try {
-    const { userId } = request.params;
-
-    const user = await UserModel.findById(userId);
-
-    if (!user.roles.includes("STAFF")) {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          translations[request.query.lang][
-            "Your account is with a role that cannot be deleted"
-          ],
-        field: "userId",
-      });
-    }
-
-    const invoices = await InvoiceModel.find({ creatorId: userId });
-    if (invoices.length != 0) {
-      return response.status(400).json({
-        accepted: false,
-        message: "Data registered with the account",
-        field: "userId",
-      });
-    }
-
-    const verificationCode = generateVerificationCode();
-    const verificationData = {
-      deleteAccount: {
-        verificationCode: verificationCode,
-        expirationDate: Date.now() + 3600000, // 1 hour
-      },
-    };
-
-    const updatedUserPromise = UserModel.findByIdAndUpdate(
-      user._id,
-      verificationData,
-      { new: true }
-    );
-
-    const deleteAccountData = { receiverEmail: user.email, verificationCode };
-    const sendEmailPromise = sendDeleteAccountCode(deleteAccountData);
-
-    const [updatedUser, sendEmail] = await Promise.all([
-      updatedUserPromise,
-      sendEmailPromise,
-    ]);
-
-    if (!sendEmail.isSent) {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          translations[request.query.lang][
-            "There was a problem sending your email"
-          ],
-        field: "isSent",
-      });
-    }
-
-    return response.status(200).json({
-      accepted: true,
-      message: "Verification code is sent successfully!",
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const verifyDeleteAccountVerificationCode = async (request, response, next) => {
-  try {
-    const { userId, verificationCode } = request.params;
-
-    const userList = await UserModel.find({
-      _id: userId,
-      isVerified: true,
-      "deleteAccount.verificationCode": verificationCode,
-      "deleteAccount.expirationDate": { $gt: Date.now() },
-    });
-
-    if (userList.length == 0) {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          translations[request.query.lang][
-            "Verification code is not registered"
-          ],
-        field: "verificationCode",
-      });
-    }
-
-    const user = userList[0];
-
-    if (user.roles.includes("STAFF")) {
-      const deleteClinicRequests = await ClinicRequestModel.deleteMany({
-        userId,
-      });
-    }
-
-    const deletedUser = await UserModel.findByIdAndDelete(userId);
-
-    return response.status(200).json({
-      accepted: true,
-      message: "User account is deleted successfully!",
-      user: deletedUser,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
 
 const verifyResetPasswordVerificationCode = async (request, response, next) => {
   try {
-    const dataValidation = authValidation.verifyResetPasswordVerificationCode(
+    const validatedData = authValidation.verifyResetPasswordVerificationCodeSchema.parse(
       request.body
     );
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
 
-    const { email, verificationCode } = request.body;
+    const { email, verificationCode } = validatedData;
 
     const userList = await UserModel.find({
       email,
@@ -588,14 +332,7 @@ const verifyResetPasswordVerificationCode = async (request, response, next) => {
     });
 
     if (userList.length == 0) {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          translations[request.query.lang][
-            "Verification code is not registered"
-          ],
-        field: "verificationCode",
-      });
+      throw new AppError("Verification code is not registered", 400)
     }
 
     return response.status(200).json({
@@ -609,16 +346,9 @@ const verifyResetPasswordVerificationCode = async (request, response, next) => {
 
 const resetPassword = async (request, response, next) => {
   try {
-    const dataValidation = authValidation.resetPassword(request.body);
-    if (!dataValidation.isAccepted) {
-      return response.status(400).json({
-        accepted: dataValidation.isAccepted,
-        message: dataValidation.message,
-        field: dataValidation.field,
-      });
-    }
+    const validatedData = authValidation.resetPasswordSchema.parse(request.body);
 
-    const { email, verificationCode, password } = request.body;
+    const { email, verificationCode, password } = validatedData;
 
     const userList = await UserModel.find({
       email,
@@ -628,28 +358,14 @@ const resetPassword = async (request, response, next) => {
     });
 
     if (userList.length == 0) {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          translations[request.query.lang][
-            "Verification code is not registered"
-          ],
-        field: "verificationCode",
-      });
+      throw new AppError("Verification code is not registered", 400)
     }
 
     const user = userList[0];
     const userId = user._id;
 
     if (bcrypt.compareSync(password, user.password)) {
-      return response.status(400).json({
-        accepted: false,
-        message:
-          translations[request.query.lang][
-            "Enter a new password to the current one"
-          ],
-        field: "password",
-      });
+      throw new AppError("Enter a new password to the current one", 400)
     }
 
     const newUserPassword = bcrypt.hashSync(password, config.SALT_ROUNDS);
@@ -669,8 +385,7 @@ const resetPassword = async (request, response, next) => {
 
     return response.status(200).json({
       accepted: true,
-      message:
-        translations[request.query.lang]["Updated user password successfully!"],
+      message: "Updated user password successfully!",
       user: updatedUser,
     });
   } catch (error) {
@@ -683,13 +398,10 @@ module.exports = {
   signup,
   verifyEmailVerificationCode,
   verifyEmail,
-  setUserVerified,
   addUserEmailVerificationCode,
   forgotPassword,
   resetPassword,
   verifyResetPasswordVerificationCode,
-  sendUserDeleteAccountVerificationCode,
-  verifyDeleteAccountVerificationCode,
   googleLogin,
   googleSignup,
 };
